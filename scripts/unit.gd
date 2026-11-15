@@ -234,114 +234,55 @@ func _separate(delta):
 
 func _draw():
 	var shape = def["shape"]
+	var infantry = shape.begins_with("infantry")
 	var lift = Vector2.ZERO
+	var shadow_off = Vector2(3, 4)
 	if is_air:
-		lift = Vector2(0, -22 + sin(anim * 3.0) * 3.0)
-		draw_circle(Vector2(6, 10), radius * 0.9, Color(0, 0, 0, 0.25))
-	else:
-		draw_circle(Vector2(3, 4), radius, Color(0, 0, 0, 0.22))
+		lift = Vector2(0, -26 + sin(anim * 3.0) * 2.5)
+		shadow_off = Vector2(16, 12)
+	elif infantry and moving:
+		lift = Vector2(0, -abs(sin(anim * 11.0)) * 1.5)
 	draw_selection(radius + 5)
 
-	var body = team_color()
-	if flash > 0:
-		body = Color(1, 1, 1)
-	match shape:
-		"infantry", "infantry_heavy", "infantry_cloak":
-			_draw_infantry(shape, body)
-		"buggy":
-			_draw_buggy(body)
-		"harvester":
-			_draw_harvester(body)
-		"tank_tesla", "tank_siege":
-			_draw_tank(shape, body)
-		"drone":
-			_draw_drone(body, lift)
-		"heli":
-			_draw_heli(body, lift)
-		_:
-			draw_outlined_circle(Vector2.ZERO, radius, body)
-	draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
-	draw_health(radius * 2.4, -radius - 14 + lift.y)
+	var hull = kind + "/hull"
+	var mod = Color(1.7, 1.7, 1.7) if flash > 0 else Color(1, 1, 1)
+	var body_angle = facing
+	if infantry and is_instance_valid(target):
+		body_angle = turret_angle
+	if Art.has(hull):
+		Art.draw_shadow(self, hull, body_angle, Vector2.ZERO, shadow_off, 0.22 if is_air else 0.34)
+		Art.draw_part(self, hull, body_angle, lift, mod)
+		if def.get("harvester", false) and cargo > 0:
+			var fill = clamp(cargo / max(1.0, def.get("capacity", 500)), 0, 1)
+			draw_set_transform(lift, facing, Vector2.ONE)
+			draw_rect(Rect2(Vector2(-15, -6), Vector2(16 * fill, 12)), Color(0.62, 0.10, 0.07))
+			draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
+		if Art.has(kind + "/turret"):
+			Art.draw_part(self, kind + "/turret", turret_angle, lift, mod)
+	else:
+		draw_circle(Vector2(3, 4), radius, Color(0, 0, 0, 0.22))
+		draw_circle(lift, radius * 0.8, team_color())
+
+	if shape == "heli":
+		_draw_rotor(lift, 27.0, 3)
+	elif shape == "drone":
+		for d in [Vector2(9, 9), Vector2(9, -9), Vector2(-9, 9), Vector2(-9, -9)]:
+			draw_circle(lift + d.rotated(facing), 5.0, Color(0.85, 0.87, 0.9, 0.28))
+	elif shape == "tank_tesla" and reload_left <= 0:
+		var tip = lift + Vector2(16, 0).rotated(turret_angle) * radius / 18.0
+		draw_circle(tip, 5.0 + sin(anim * 9.0), Color(0.5, 0.8, 1.0, 0.35))
+
+	draw_health(max(22.0, radius * 2.2), -radius - 12 + lift.y)
 	if panic_time > 0 and int(anim * 6) % 2 == 0:
-		draw_string(game.font, Vector2(-3, -radius - 18 + lift.y), "!", Color(1, 0.9, 0.2))
+		draw_string(game.font, Vector2(-3, -radius - 16 + lift.y), "!", Color(1, 0.9, 0.2))
 
 
-func _draw_infantry(shape, body):
-	var bob = sin(anim * 14.0) * 1.5 if moving else 0.0
-	var o = Vector2(0, bob)
-	var gun_dir = Vector2.RIGHT.rotated(turret_angle)
-	if shape == "infantry_cloak":
-		draw_outlined_poly([o + Vector2(0, -9), o + Vector2(8, 8), o + Vector2(-8, 8)], Color("#c9a46a"), 2.5)
-		draw_line(o + Vector2(-5, -1), o + Vector2(5, -1), body, 3.0)
-	elif shape == "infantry_heavy":
-		draw_outlined_poly(rect_points(o + Vector2(0, 2), Vector2(16, 12)), body, 2.5)
-	else:
-		draw_outlined_circle(o + Vector2(0, 2), 6, body, 2.5)
-	draw_line(o, o + gun_dir * 13, INK, 3.0)
-	var head = Color("#e2b48a") if shape != "infantry_heavy" else team_dark()
-	draw_outlined_circle(o + Vector2(0, -6), 4.5, head, 2.0)
-
-
-func _draw_buggy(body):
-	draw_set_transform(Vector2.ZERO, facing, Vector2.ONE)
-	for w in [Vector2(-9, -9), Vector2(9, -9), Vector2(-9, 9), Vector2(9, 9)]:
-		draw_rect(Rect2(w - Vector2(5, 3), Vector2(10, 6)), INK)
-	draw_outlined_poly(rect_points(Vector2.ZERO, Vector2(26, 15)), body)
-	draw_rect(Rect2(Vector2(-6, -6), Vector2(8, 12)), team_dark())
-	draw_set_transform(Vector2.ZERO, turret_angle, Vector2.ONE)
-	draw_line(Vector2.ZERO, Vector2(16, 0), INK, 4.0)
-
-
-func _draw_harvester(body):
-	draw_set_transform(Vector2.ZERO, facing, Vector2.ONE)
-	draw_rect(Rect2(Vector2(-20, -16), Vector2(40, 6)), INK)
-	draw_rect(Rect2(Vector2(-20, 10), Vector2(40, 6)), INK)
-	draw_outlined_poly(rect_points(Vector2.ZERO, Vector2(36, 24)), Color("#c8b28a"))
-	draw_outlined_poly([Vector2(18, -12), Vector2(28, -15), Vector2(28, 15), Vector2(18, 12)], Color("#7d7d7d"))
-	# Uralium hopper shows the load.
-	draw_rect(Rect2(Vector2(-14, -8), Vector2(20, 16)), INK)
-	var fill = clamp(cargo / max(1.0, def.get("capacity", 500)), 0, 1)
-	draw_rect(Rect2(Vector2(-13, -7), Vector2(18 * fill, 14)), Color("#c0392b"))
-	draw_rect(Rect2(Vector2(8, -6), Vector2(8, 12)), body)
-	if moving and int(anim * 10) % 2 == 0:
-		draw_circle(Vector2(-22, 0), 4, Color(0.95, 0.85, 0.6, 0.6))
-
-
-func _draw_tank(shape, body):
-	var size = Vector2(34, 24) if shape == "tank_tesla" else Vector2(42, 28)
-	draw_set_transform(Vector2.ZERO, facing, Vector2.ONE)
-	draw_rect(Rect2(Vector2(-size.x / 2 - 2, -size.y / 2 - 3), Vector2(size.x + 4, 7)), INK)
-	draw_rect(Rect2(Vector2(-size.x / 2 - 2, size.y / 2 - 4), Vector2(size.x + 4, 7)), INK)
-	draw_outlined_poly(rect_points(Vector2.ZERO, size), body)
-	draw_set_transform(Vector2.ZERO, turret_angle, Vector2.ONE)
-	if shape == "tank_tesla":
-		draw_outlined_circle(Vector2.ZERO, 9, team_dark())
-		var glow = Color(0.5, 0.85, 1.0) if reload_left <= 0 else Color(0.3, 0.4, 0.5)
-		draw_line(Vector2(0, 0), Vector2(14, 0), INK, 5.0)
-		draw_outlined_circle(Vector2(15, 0), 5, glow, 2.0)
-	else:
-		draw_line(Vector2(0, 0), Vector2(30, 0), INK, 7.0)
-		draw_line(Vector2(0, 0), Vector2(29, 0), Color("#5a5a5a"), 3.0)
-		draw_outlined_circle(Vector2.ZERO, 11, team_dark())
-
-
-func _draw_drone(body, lift):
-	draw_set_transform(lift, facing, Vector2.ONE)
-	for a in [PI / 4, 3 * PI / 4, 5 * PI / 4, 7 * PI / 4]:
-		var tip = Vector2.RIGHT.rotated(a) * 11
-		draw_line(Vector2.ZERO, tip, INK, 3.0)
-		draw_arc(tip, 5, anim * 30.0, anim * 30.0 + PI, 6, Color(0.9, 0.9, 0.9, 0.7), 2.0)
-	draw_outlined_circle(Vector2.ZERO, 6, body, 2.5)
-
-
-func _draw_heli(body, lift):
-	draw_set_transform(lift, facing, Vector2.ONE)
-	draw_line(Vector2(-6, 0), Vector2(-28, 0), INK, 5.0)
-	draw_line(Vector2(-6, 0), Vector2(-27, 0), body, 2.0)
-	draw_line(Vector2(-28, -6), Vector2(-28, 6), INK, 3.0)
-	draw_outlined_poly([Vector2(16, 0), Vector2(8, -9), Vector2(-10, -8), Vector2(-12, 0), Vector2(-10, 8), Vector2(8, 9)], body)
-	draw_outlined_poly([Vector2(14, 0), Vector2(8, -5), Vector2(4, 0), Vector2(8, 5)], Color(0.6, 0.85, 1.0), 2.0)
-	var a = anim * 25.0
-	for k in range(3):
-		var dir = Vector2.RIGHT.rotated(a + k * TAU / 3)
-		draw_line(-dir * 4, dir * 26, Color(0.1, 0.1, 0.1, 0.6), 3.0)
+func _draw_rotor(center, r, blades):
+	# Spinning rotor: a faint blur disc plus fast blades.
+	draw_circle(center, r, Color(0.8, 0.82, 0.85, 0.10))
+	for k in range(blades):
+		var a = anim * 38.0 + k * TAU / blades
+		var d = Vector2.RIGHT.rotated(a)
+		draw_line(center - d * 3, center + d * r, Color(0.08, 0.08, 0.09, 0.45), 2.5, true)
+		var d2 = Vector2.RIGHT.rotated(a - 0.25)
+		draw_line(center, center + d2 * r, Color(0.08, 0.08, 0.09, 0.15), 4.0, true)

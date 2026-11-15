@@ -2,7 +2,7 @@ extends Node2D
 # Procedural desert map: sand, rock plateaus, uralium fields and pressurised uralium blooms.
 # Terrain is drawn once (cached by the renderer); uralium is a separate layer redrawn when it changes.
 
-const UraliumLayer = preload("res://scripts/uralium_layer.gd")
+const TerrainScript = preload("res://scripts/terrain.gd")
 
 const CELL = 64
 const W = 64
@@ -20,7 +20,7 @@ var uralium = {}          # Vector2 cell -> amount
 var bloom_cells = []    # Vector2 cells holding pressurised uralium
 var occupied = {}       # Vector2 cell -> building
 var bases = []          # base centre cells (index = start slot)
-var uralium_layer
+var ground
 var rng = RandomNumberGenerator.new()
 
 
@@ -96,10 +96,9 @@ func generate(seed_value):
 		if not too_close:
 			bloom_cells.append(c)
 
-	uralium_layer = UraliumLayer.new()
-	uralium_layer.map = self
-	add_child(uralium_layer)
-	update()
+	ground = TerrainScript.new()
+	add_child(ground)
+	ground.setup(self)
 
 
 func _near_base(c, r):
@@ -164,7 +163,7 @@ func take_uralium(c, amount):
 	uralium[c] -= taken
 	if uralium[c] <= 0.5:
 		uralium.erase(c)
-	uralium_layer.mark_dirty()
+	ground.mark_dirty(c)
 	return taken
 
 
@@ -172,7 +171,7 @@ func add_uralium(c, amount):
 	if get_type(c) != SAND:
 		return
 	uralium[c] = uralium.get(c, 0) + amount
-	uralium_layer.mark_dirty()
+	ground.mark_dirty(c)
 
 
 func find_uralium(near_pos, exclude = []):
@@ -197,52 +196,6 @@ func clamp_to_map(p):
 func _cell_hash(x, y, k = 0):
 	var h = int(x) * 73856093 ^ int(y) * 19349663 ^ k * 83492791
 	return abs(h % 1000) / 1000.0
-
-
-func _draw():
-	# Posterised sand bands give the flat "comic" colouring.
-	for y in range(H):
-		for x in range(W):
-			var i = y * W + x
-			var r = Rect2(x * CELL, y * CELL, CELL, CELL)
-			if terrain[i] == SAND:
-				var band = int(clamp((shade[i] + 0.6) / 1.2 * SAND_COLORS.size(), 0, SAND_COLORS.size() - 1))
-				draw_rect(r, SAND_COLORS[band])
-			else:
-				var band2 = int(clamp((shade[i] + 0.6) / 1.2 * ROCK_COLORS.size(), 0, ROCK_COLORS.size() - 1))
-				draw_rect(r, ROCK_COLORS[band2])
-
-	# Dune ripples.
-	for y in range(H):
-		for x in range(W):
-			if terrain[y * W + x] != SAND:
-				continue
-			if _cell_hash(x, y) < 0.55:
-				var c = Vector2(x * CELL + 32, y * CELL + 40 + _cell_hash(x, y, 1) * 20)
-				var rad = 22 + _cell_hash(x, y, 2) * 18
-				draw_arc(c, rad, PI * 1.15, PI * 1.85, 8, Color(1, 0.93, 0.75, 0.35), 2.0)
-
-	# Rock cracks, pebbles and thick ink outlines where rock meets sand.
-	for y in range(H):
-		for x in range(W):
-			if terrain[y * W + x] != ROCK:
-				continue
-			var o = Vector2(x * CELL, y * CELL)
-			if _cell_hash(x, y, 3) < 0.35:
-				var a = o + Vector2(10 + _cell_hash(x, y, 4) * 30, 12)
-				draw_polyline(PoolVector2Array([a, a + Vector2(8, 14), a + Vector2(3, 26), a + Vector2(14, 40)]), Color(0.2, 0.12, 0.08, 0.6), 2.0)
-			if _cell_hash(x, y, 5) < 0.3:
-				draw_circle(o + Vector2(20 + _cell_hash(x, y, 6) * 30, 44), 4, Color(0.35, 0.22, 0.14))
-			if get_type(Vector2(x, y - 1)) == SAND:
-				draw_line(o, o + Vector2(CELL, 0), OUTLINE, 4.0)
-				draw_line(o + Vector2(0, 4), o + Vector2(CELL, 4), Color(0.7, 0.5, 0.35), 2.0)
-			if get_type(Vector2(x, y + 1)) == SAND:
-				draw_line(o + Vector2(0, CELL), o + Vector2(CELL, CELL), OUTLINE, 4.0)
-				draw_rect(Rect2(o + Vector2(0, CELL), Vector2(CELL, 8)), Color(0, 0, 0, 0.18))
-			if get_type(Vector2(x - 1, y)) == SAND:
-				draw_line(o, o + Vector2(0, CELL), OUTLINE, 4.0)
-			if get_type(Vector2(x + 1, y)) == SAND:
-				draw_line(o + Vector2(CELL, 0), o + Vector2(CELL, CELL), OUTLINE, 4.0)
 
 
 func make_minimap_image(size):

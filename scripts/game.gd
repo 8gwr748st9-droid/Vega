@@ -75,6 +75,9 @@ func _ready():
 	font = tmp.get_font("font")
 	tmp.free()
 
+	if not Art.is_ready:
+		Art.build()
+		Art.connect("finished", self, "_on_art_ready")
 	team_faction = [GameState.player_faction, GameState.enemy_faction, "freedom"]
 	for t in range(3):
 		struct_build.append({"kind": "", "progress": 0.0, "ready": false})
@@ -165,6 +168,11 @@ func _ready():
 		cutscene.play(mission["intro"])
 	else:
 		notify("Skirmish: destroy every %s structure." % Data.FACTIONS[team_faction[enemy_team]]["name"])
+
+
+func _on_art_ready():
+	for e in get_tree().get_nodes_in_group("entities"):
+		e.update()
 
 
 func _on_intro_done():

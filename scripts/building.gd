@@ -7,6 +7,7 @@ var queue = []                # unit kinds waiting to be built
 var progress = 0.0
 var rise = 0.0                # construction "pop-up" animation 0..1
 var anim = 0.0
+var aim = PI / 2          # gun tower turret angle
 
 
 func setup_building(g, k, t, cell):
@@ -62,7 +63,7 @@ func _process(delta):
 			game.spawn_unit(k, team, exit_point(), self)
 	if def.get("defense", false):
 		_defend(delta)
-	if def["shape"] in ["power", "tesla_coil", "refinery", "helipad", "uplink"] or flash > 0 or queue.size() > 0:
+	if def["shape"] in ["tesla_coil", "refinery", "helipad", "uplink", "hq", "gun_tower"] or flash > 0 or queue.size() > 0:
 		update()
 
 
@@ -90,87 +91,89 @@ func die():
 	.die()
 
 
-# ---------------------------------------------------------------- drawing (placeholder comic style)
+func muzzle_offset(other):
+	var dir = (other.global_position - global_position).normalized()
+	match def["shape"]:
+		"tesla_coil":
+			return Vector2(0, -49)
+		"gun_tower":
+			return Vector2(0, -19) + dir * 26
+	return dir * radius
+
+
+# ---------------------------------------------------------------- drawing
+
+func art_id():
+	return kind + "/" + faction
+
 
 func _draw():
 	var s = size_cells * Data.CELL
-	var scale_y = 0.3 + 0.7 * rise
-	draw_set_transform(Vector2(0, s.y / 2 * (1 - scale_y)), 0, Vector2(1, scale_y))
-	var r = Rect2(-s / 2 + Vector2(6, 6), s - Vector2(12, 12))
-	# Shadow and concrete slab.
-	draw_rect(Rect2(r.position + Vector2(6, 8), r.size), Color(0, 0, 0, 0.25))
-	draw_outlined_poly(rect_points(Vector2.ZERO, r.size), Color("#b8ad9a"), 4.0)
-	var c = team_color()
-	if flash > 0:
-		c = Color(1, 1, 1)
-	var d = team_dark()
-	match def["shape"]:
-		"hq":
-			draw_outlined_poly(rect_points(Vector2(0, 10), Vector2(r.size.x - 30, r.size.y * 0.45)), d)
-			draw_outlined_circle(Vector2(0, -12), 40, c, 4.0)
-			draw_arc(Vector2(-8, -20), 22, PI, PI * 1.5, 8, Color(1, 1, 1, 0.5), 4.0)
-			draw_line(Vector2(0, -52), Vector2(0, -82), INK, 3.0)
-			draw_outlined_poly([Vector2(0, -82), Vector2(24, -75), Vector2(0, -68)], c, 2.0)
-		"power":
-			for x in [-22, 22]:
-				draw_outlined_poly(rect_points(Vector2(x, 0), Vector2(26, 60)), d)
-				var pulse = 0.5 + 0.5 * sin(anim * 4.0 + x)
-				draw_rect(Rect2(Vector2(x - 7, -20), Vector2(14, 40)), Color(1, 0.85, 0.3, 0.4 + pulse * 0.5))
-			draw_outlined_circle(Vector2(0, -30), 8, c, 2.5)
-		"refinery":
-			for x in [-50, -10]:
-				draw_outlined_circle(Vector2(x, -6), 22, d, 3.5)
-				draw_circle(Vector2(x, -6), 12, Color("#c0392b"))
-			draw_outlined_poly(rect_points(Vector2(45, -2), Vector2(56, 70)), c)
-			draw_rect(Rect2(Vector2(-24, 34), Vector2(48, 12)), Color("#5c5c5c"))
-		"barracks":
-			draw_outlined_poly([Vector2(-45, 30), Vector2(-45, -15), Vector2(0, -42), Vector2(45, -15), Vector2(45, 30)], c)
-			draw_outlined_poly(rect_points(Vector2(0, 16), Vector2(22, 28)), INK, 2.0)
-		"factory":
-			draw_outlined_poly(rect_points(Vector2(0, -6), Vector2(r.size.x - 20, r.size.y - 40)), c)
-			draw_outlined_poly(rect_points(Vector2(0, 30), Vector2(80, 50)), Color("#4a4a4a"))
-			for k in range(4):
-				draw_line(Vector2(-38, 12 + k * 11), Vector2(38, 12 + k * 11), INK, 2.0)
-			draw_outlined_circle(Vector2(-55, -50), 10, d)
-			if queue.size() > 0:
-				draw_circle(Vector2(-55, -50), 5, Color(1, 0.6, 0.2))
-		"helipad":
-			draw_outlined_circle(Vector2.ZERO, 46, Color("#5a5a5a"), 4.0)
-			draw_line(Vector2(-14, -18), Vector2(-14, 18), Color(1, 1, 1), 6.0)
-			draw_line(Vector2(14, -18), Vector2(14, 18), Color(1, 1, 1), 6.0)
-			draw_line(Vector2(-14, 0), Vector2(14, 0), Color(1, 1, 1), 6.0)
-			var blink = Color(1, 0.3, 0.2) if int(anim * 2) % 2 == 0 else c
-			for p in [Vector2(-44, -44), Vector2(44, -44), Vector2(-44, 44), Vector2(44, 44)]:
-				draw_circle(p * 0.75, 4, blink)
-		"gun_tower":
-			draw_outlined_circle(Vector2.ZERO, 20, d)
-			var dir = Vector2.RIGHT.rotated((target.global_position - global_position).angle()) if is_instance_valid(target) else Vector2.DOWN
-			draw_line(Vector2.ZERO, dir * 28, INK, 7.0)
-			draw_outlined_circle(Vector2.ZERO, 11, c, 3.0)
-		"uplink":
-			draw_outlined_poly(rect_points(Vector2(0, 20), Vector2(60, 30)), d)
-			var aim = Vector2.RIGHT.rotated(-PI / 2 + sin(anim * 0.4) * 0.6)
-			draw_line(Vector2(0, 10), aim * 30, INK, 6.0)
-			draw_outlined_poly([aim * 30 + aim.tangent() * 28, aim * 44, aim * 30 - aim.tangent() * 28, aim * 22], c)
-			var charge = game.orbital_charge[team] / def["charge_time"]
-			draw_arc(Vector2(0, 20), 12, -PI / 2, -PI / 2 + TAU * charge, 20, Color(0.55, 0.9, 1.0), 4.0)
-		"tesla_coil":
-			draw_outlined_poly([Vector2(-18, 24), Vector2(18, 24), Vector2(8, -20), Vector2(-8, -20)], d)
-			for k in range(4):
-				draw_outlined_circle(Vector2(0, -8 - k * 9), 12 - k * 1.5, c, 2.0)
-			var charged = reload_left <= 0 and game.has_power(team)
-			draw_outlined_circle(Vector2(0, -48), 9, Color(0.55, 0.9, 1.0) if charged else Color(0.3, 0.35, 0.4), 2.5)
-			if charged and int(anim * 8) % 3 == 0:
-				var a = Vector2(0, -48)
-				draw_polyline(PoolVector2Array([a, a + Vector2(8, -6), a + Vector2(4, -14), a + Vector2(12, -20)]), Color(0.7, 0.95, 1), 2.0)
-	draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
+	var id = art_id()
+	var mod = Color(1.6, 1.6, 1.6) if flash > 0 else Color(1, 1, 1)
+	mod.a = 0.35 + 0.65 * rise
+	if Art.has(id):
+		Art.draw_part(self, id, 0, Vector2(0, (1.0 - rise) * 14), mod)
+	else:
+		draw_rect(Rect2(-s / 2 + Vector2(6, 6), s - Vector2(12, 12)), team_dark())
+	if rise >= 1.0:
+		_draw_live(s)
 	if selected:
-		draw_rect(Rect2(-s / 2 + Vector2(2, 2), s - Vector2(4, 4)), Color(0.4, 1, 0.4), false, 2.0)
+		_draw_brackets(Rect2(-s / 2 + Vector2(2, 2), s - Vector2(4, 4)))
 	if queue.size() > 0 and team == game.player_team:
 		var frac = progress / Data.get_def(queue[0])["build_time"]
-		draw_rect(Rect2(Vector2(-s.x / 2 + 8, s.y / 2 - 14), Vector2(s.x - 16, 6)), INK)
-		draw_rect(Rect2(Vector2(-s.x / 2 + 9, s.y / 2 - 13), Vector2((s.x - 18) * frac, 4)), Color(0.3, 0.8, 1.0))
-	if not game.has_power(team) and def.get("power", 0) < 0:
-		if int(anim * 2) % 2 == 0:
-			draw_outlined_circle(Vector2(s.x / 2 - 18, -s.y / 2 + 18), 9, Color(1, 0.85, 0.1), 2.0)
-	draw_health(s.x - 20, -s.y / 2 - 4)
+		var r = Rect2(Vector2(-s.x / 2 + 10, s.y / 2 - 12), Vector2(s.x - 20, 4))
+		draw_rect(r.grow(1), Color(0, 0, 0, 0.65))
+		draw_rect(Rect2(r.position, Vector2(r.size.x * frac, 4)), Color(0.35, 0.8, 1.0))
+	if not game.has_power(team) and def.get("power", 0) < 0 and int(anim * 2) % 2 == 0:
+		var c = Vector2(s.x / 2 - 16, -s.y / 2 + 4)
+		draw_colored_polygon(PoolVector2Array([c + Vector2(0, -10), c + Vector2(9, 6), c + Vector2(-9, 6)]), Color(1, 0.82, 0.1))
+		draw_line(c + Vector2(0, -4), c + Vector2(0, 1), Color(0.1, 0.1, 0.1), 2.0)
+		draw_circle(c + Vector2(0, 3.5), 1.2, Color(0.1, 0.1, 0.1))
+	draw_health(s.x - 24, -s.y / 2 - 22)
+
+
+func _draw_brackets(r):
+	var col = Color(0.45, 1.0, 0.55, 0.95)
+	var l = 14.0
+	for corner in [[r.position, Vector2(1, 1)], [Vector2(r.end.x, r.position.y), Vector2(-1, 1)], [r.end, Vector2(-1, -1)], [Vector2(r.position.x, r.end.y), Vector2(1, -1)]]:
+		var c = corner[0]
+		var d = corner[1]
+		draw_line(c, c + Vector2(l * d.x, 0), col, 2.0)
+		draw_line(c, c + Vector2(0, l * d.y), col, 2.0)
+
+
+func _draw_live(_s):
+	# Moving and glowing parts drawn on top of the pre-rendered building.
+	var glow = Color(0.55, 0.85, 1.0)
+	match def["shape"]:
+		"gun_tower":
+			if is_instance_valid(target):
+				aim = (target.global_position - global_position).angle()
+			Art.draw_part(self, "gun_tower/turret/" + faction, aim, Vector2(0, -19))
+		"uplink":
+			Art.draw_shadow(self, "orbital_uplink/dish/" + faction, anim * 0.25, Vector2(16, -21), Vector2(26, 30), 0.25)
+			Art.draw_part(self, "orbital_uplink/dish/" + faction, anim * 0.25, Vector2(16, -21))
+			var charge = game.orbital_charge[team] / def["charge_time"]
+			draw_arc(Vector2(16, -21), 6, -PI / 2, -PI / 2 + TAU * charge, 20, glow, 3.0, true)
+		"tesla_coil":
+			if reload_left <= 0 and game.has_power(team):
+				var top = Vector2(0, -49)
+				draw_circle(top, 13 + sin(anim * 11.0) * 2.0, Color(0.5, 0.8, 1.0, 0.28))
+				if int(anim * 9) % 3 == 0:
+					var a = anim * 7.0
+					var p1 = top + Vector2.RIGHT.rotated(a) * 9
+					draw_polyline(PoolVector2Array([p1, p1 + Vector2.RIGHT.rotated(a + 0.6) * 8, p1 + Vector2.RIGHT.rotated(a - 0.4) * 15]), Color(0.8, 0.95, 1.0), 1.5, true)
+		"refinery":
+			var tip = Vector2(76, -99)
+			var f = 1.0 + sin(anim * 13.0) * 0.2
+			draw_circle(tip + Vector2(0, -4), 7 * f, Color(1.0, 0.55, 0.15, 0.45))
+			draw_circle(tip + Vector2(0, -3), 3.5 * f, Color(1.0, 0.9, 0.5, 0.9))
+		"helipad":
+			var on = int(anim * 2) % 2 == 0
+			for i in range(8):
+				var a2 = i * TAU / 8
+				draw_circle(Vector2(-6, 6) + Vector2(cos(a2), sin(a2)) * 46, 2.0, Color(1, 0.3, 0.2) if on else Color(0.4, 0.1, 0.08))
+		"hq":
+			if int(anim * 1.5) % 2 == 0:
+				draw_circle(Vector2(-30, -22 - 46.5), 3.0, Color(1, 0.25, 0.2, 0.8))

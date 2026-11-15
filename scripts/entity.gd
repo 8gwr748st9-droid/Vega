@@ -84,7 +84,7 @@ func find_target(sight):
 
 func fire_at(other):
 	reload_left = def["reload"]
-	var muzzle = global_position + (other.global_position - global_position).normalized() * radius
+	var muzzle = global_position + muzzle_offset(other)
 	match def.get("weapon", ""):
 		"tesla":
 			game.fx_tesla(muzzle, other.global_position)
@@ -94,6 +94,13 @@ func fire_at(other):
 			other.take_damage(def["damage"], self)
 		_:
 			game.spawn_projectile(self, other)
+
+
+func muzzle_offset(other):
+	var dir = (other.global_position - global_position).normalized()
+	if is_air:
+		return dir * radius + Vector2(0, -26)
+	return dir * radius
 
 
 func take_damage(amount, attacker = null):
@@ -133,21 +140,26 @@ func draw_health(width, y_offset):
 	if not selected and hp >= max_hp:
 		return
 	var frac = clamp(hp / max_hp, 0, 1)
-	var col = Color(0.3, 0.9, 0.3)
+	var col = Color(0.35, 0.92, 0.40)
 	if frac < 0.6:
-		col = Color(0.95, 0.85, 0.2)
+		col = Color(0.98, 0.80, 0.20)
 	if frac < 0.3:
-		col = Color(0.95, 0.25, 0.2)
-	var r = Rect2(Vector2(-width / 2, y_offset), Vector2(width, 6))
-	draw_rect(r, INK)
-	draw_rect(Rect2(r.position + Vector2(1, 1), Vector2((width - 2) * frac, 4)), col)
+		col = Color(0.98, 0.28, 0.22)
+	var r = Rect2(Vector2(-width / 2, y_offset), Vector2(width, 4))
+	draw_rect(r.grow(1), Color(0, 0, 0, 0.65))
+	draw_rect(Rect2(r.position, Vector2(width * frac, 4)), col)
+	draw_rect(Rect2(r.position, Vector2(width * frac, 1.5)), col.lightened(0.4))
 
 
 func draw_selection(r):
 	if not selected:
 		return
-	var col = Color(0.4, 1.0, 0.4)
-	draw_arc(Vector2.ZERO, r, 0, TAU, 24, col, 2.0)
+	# Ground ring (slightly squashed so it sits on the floor), with corner brackets.
+	var col = Color(0.45, 1.0, 0.55, 0.9)
+	draw_set_transform(Vector2(0, 2), 0, Vector2(1, 0.8))
+	draw_arc(Vector2.ZERO, r, 0, TAU, 32, Color(0, 0, 0, 0.35), 3.5, true)
+	draw_arc(Vector2.ZERO, r, 0, TAU, 32, col, 1.6, true)
+	draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
 
 
 func draw_outlined_poly(points, fill, width = 3.0):
