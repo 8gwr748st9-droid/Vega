@@ -8,15 +8,25 @@ See [docs/DESIGN.md](docs/DESIGN.md) for the story, factions and roadmap.
 ## What's in the prototype
 
 - Main menu, skirmish (play as Arthems or Klingos) and Campaign Mission 1 "Landfall" with in-engine cutscenes
-- Procedural desert map with rock plateaus, Uralium fields and explosive Uralium blooms
+- Semi-realistic graphics made entirely in code, with no image files:
+  - sunlit desert terrain with dunes, cracked rock plateaus and red Uralium ore
+  - shaded units with soft shadows, pre-rendered when the game first starts
+  - buildings drawn in a tilted 3D view so each looks like what it is
+  - fire, smoke, sparks, scorch marks, dust and glowing Tesla bolts
 - Base building in a sidebar, like Red Alert 2: power, refinery, barracks, war factory, helipad and defences
-- Harvesters, infantry, vehicles, a drone, a gunship, Tesla weapons and missiles
+- Harvesters, infantry, vehicles, a drone, an attack helicopter, Tesla weapons and missiles
+- Units steer around buildings
 - Sandeaters that guard Uralium fields, swallow intruders, vanish and return later
 - Arthem Orbital Uplink: an unstable test-phase vaporiser that drifts off target and makes enemies flee
+- Freedom Fighter raids in skirmish, riding sandeaters that leave harvestable lines of Uralium
 - Desert wildlife, dust clouds and vehicle tracks
 - A computer opponent with three difficulty levels
-- Freedom Fighter raids in skirmish, riding sandeaters that leave harvestable lines of Uralium
-- Placeholder comic-style graphics drawn in code, with no image files yet
+
+**If the game stutters** on an older Mac, set **GRAPHICS** to **FAST** in the main menu. That turns off
+the glow and halves the particle effects.
+
+**First launch:** the menu shows "Preparing graphics..." for a few seconds while units and buildings are
+rendered. The result is saved, so later launches start straight away.
 
 ## Running it on a Mac (High Sierra 10.13.6 or newer)
 
@@ -51,14 +61,17 @@ on rock near your base.
 ## Project layout
 
 ```
-project.godot        Godot project settings (GLES2 renderer for older Macs)
+project.godot        Godot project settings (GLES3 renderer, falls back to GLES2)
 scenes/              Menu.tscn, Game.tscn
 scripts/data.gd      All unit / building / faction stats (balance here)
 scripts/missions.gd  Campaign missions and cutscene dialogue
 scripts/game.gd      Match logic: economy, power, input, win/lose
 scripts/ai.gd        Computer opponent
+scripts/art/         Painter and designs that pre-render units and buildings
+shaders/             Terrain shader
+fonts/               Rajdhani typeface (SIL Open Font License)
 scripts/...          Units, buildings, map, sandeaters, orbital strike, wildlife, HUD, cutscenes
-tests/smoke_test.gd  Headless test that simulates a few minutes of play
+tests/               Smoke test, screenshot and gallery tools
 docs/DESIGN.md       Game design document
 ```
 

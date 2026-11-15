@@ -175,6 +175,12 @@ func _step_to(p, delta, check_stuck = false):
 		if d < 60 and stuck > 0.5:
 			return true
 	var spd = def["speed"] * speed_mult()
+	if not is_air:
+		# Go around buildings instead of pushing against them.
+		var via = game.detour(position, p, radius)
+		if via != p:
+			to = via - position
+			d = max(0.001, to.length())
 	var step = to / d * min(d, spd * delta)
 	position = game.map.clamp_to_map(position + step)
 	facing = lerp_angle(facing, to.angle(), min(1.0, delta * 6.0))
@@ -192,7 +198,10 @@ func _leave_tracks(dist):
 	if track_acc >= 14.0:
 		track_acc = 0.0
 		if game.map.is_sand_at(position):
-			game.tracks.add_mark(position, facing, def["shape"].begins_with("infantry"))
+			var foot = def["shape"].begins_with("infantry")
+			game.tracks.add_mark(position, facing, foot)
+			if not foot:
+				game.fx_dust(position - Vector2(radius, 0).rotated(facing), radius / 14.0)
 
 
 func _separate(delta):
@@ -264,12 +273,12 @@ func _draw():
 		draw_circle(lift, radius * 0.8, team_color())
 
 	if shape == "heli":
-		_draw_rotor(lift, 27.0, 3)
+		_draw_rotor(lift + Vector2(-2, 0).rotated(facing), 30.0, 4)
 	elif shape == "drone":
 		for d in [Vector2(9, 9), Vector2(9, -9), Vector2(-9, 9), Vector2(-9, -9)]:
 			draw_circle(lift + d.rotated(facing), 5.0, Color(0.85, 0.87, 0.9, 0.28))
 	elif shape == "tank_tesla" and reload_left <= 0:
-		var tip = lift + Vector2(16, 0).rotated(turret_angle) * radius / 18.0
+		var tip = lift + Vector2(19, 0).rotated(turret_angle) * radius / 18.0
 		draw_circle(tip, 5.0 + sin(anim * 9.0), Color(0.5, 0.8, 1.0, 0.35))
 
 	draw_health(max(22.0, radius * 2.2), -radius - 12 + lift.y)
@@ -278,11 +287,16 @@ func _draw():
 
 
 func _draw_rotor(center, r, blades):
-	# Spinning rotor: a faint blur disc plus fast blades.
-	draw_circle(center, r, Color(0.8, 0.82, 0.85, 0.10))
+	# Main rotor: four clearly visible blades with a faint motion-blur disc behind them.
+	draw_circle(center, r, Color(0.85, 0.87, 0.9, 0.07))
+	draw_arc(center, r, 0, TAU, 32, Color(0.9, 0.92, 0.95, 0.10), 1.5, true)
+	var spin = anim * 16.0
 	for k in range(blades):
-		var a = anim * 38.0 + k * TAU / blades
+		var a = spin + k * TAU / blades
 		var d = Vector2.RIGHT.rotated(a)
-		draw_line(center - d * 3, center + d * r, Color(0.08, 0.08, 0.09, 0.45), 2.5, true)
-		var d2 = Vector2.RIGHT.rotated(a - 0.25)
-		draw_line(center, center + d2 * r, Color(0.08, 0.08, 0.09, 0.15), 4.0, true)
+		var side = d.tangent() * 1.6
+		draw_colored_polygon(PoolVector2Array([center + d * 3 - side, center + d * r - side * 0.7, center + d * r + side * 0.7, center + d * 3 + side]), Color(0.10, 0.11, 0.12, 0.80))
+		# trailing blur
+		var d2 = Vector2.RIGHT.rotated(a - 0.22)
+		draw_line(center + d2 * 4, center + d2 * r, Color(0.10, 0.11, 0.12, 0.16), 5.0, true)
+	draw_circle(center, 2.4, Color(0.25, 0.26, 0.28))

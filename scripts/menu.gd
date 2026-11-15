@@ -1,15 +1,19 @@
 extends Control
-# Main menu with a drawn desert backdrop: campaign, skirmish, difficulty, controls.
+# Main menu: live desert backdrop (the real terrain shader), title, campaign, skirmish and settings.
 
 const UIStyle = preload("res://scripts/ui_style.gd")
 const Missions = preload("res://scripts/missions.gd")
+const MapScript = preload("res://scripts/map.gd")
 
 var t = 0.0
+var backdrop
 var main_box
 var campaign_box
-var diff_button
 var help_panel
-var font
+var diff_button
+var gfx_button
+var loading_label
+var start_buttons = []
 
 
 func _ready():
@@ -17,121 +21,179 @@ func _ready():
 	anchor_bottom = 1
 	theme = UIStyle.make_theme()
 	get_tree().paused = false
-	var tmp = Label.new()
-	font = tmp.get_font("font")
-	tmp.free()
+
+	# Backdrop: a slowly drifting piece of real map.
+	backdrop = MapScript.new()
+	add_child(backdrop)
+	backdrop.generate(4242)
+
+	var shade = ColorRect.new()
+	shade.anchor_right = 1
+	shade.anchor_bottom = 1
+	shade.color = Color(0.03, 0.02, 0.02, 0.38)
+	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(shade)
+	var band = ColorRect.new()
+	band.anchor_bottom = 1
+	band.margin_right = 470
+	band.color = Color(0.03, 0.035, 0.045, 0.80)
+	band.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(band)
+
+	var title_font = UIStyle.font(120, "Bold")
+	title_font.extra_spacing_char = 14
+	var title = Label.new()
+	title.text = "VEGA"
+	title.add_font_override("font", title_font)
+	title.add_color_override("font_color", UIStyle.ACCENT)
+	title.margin_left = 56
+	title.margin_top = 40
+	add_child(title)
+	var sub_font = UIStyle.font(24, "Medium")
+	sub_font.extra_spacing_char = 6
+	var sub = Label.new()
+	sub.text = "THE URALIUM WARS"
+	sub.add_font_override("font", sub_font)
+	sub.add_color_override("font_color", UIStyle.TEXT)
+	sub.margin_left = 62
+	sub.margin_top = 170
+	add_child(sub)
 
 	main_box = VBoxContainer.new()
-	main_box.anchor_left = 0.5
-	main_box.anchor_top = 0.5
-	main_box.margin_left = -160
-	main_box.margin_top = -40
-	main_box.margin_right = 160
-	main_box.add_constant_override("separation", 10)
+	main_box.margin_left = 60
+	main_box.margin_top = 250
+	main_box.margin_right = 410
+	main_box.add_constant_override("separation", 8)
 	add_child(main_box)
-
-	_btn(main_box, "Campaign", "_show_campaign")
-	_btn(main_box, "Skirmish - play as Arthems", "_skirmish", ["arthem", "klingos"])
-	_btn(main_box, "Skirmish - play as Klingos", "_skirmish", ["klingos", "arthem"])
+	start_buttons.append(_btn(main_box, "CAMPAIGN", "_show_campaign"))
+	start_buttons.append(_btn(main_box, "SKIRMISH  -  ARTHEMS", "_skirmish", ["arthem", "klingos"]))
+	start_buttons.append(_btn(main_box, "SKIRMISH  -  KLINGOS", "_skirmish", ["klingos", "arthem"]))
 	diff_button = _btn(main_box, "", "_cycle_difficulty")
-	_btn(main_box, "Controls", "_toggle_help")
-	_btn(main_box, "Quit", "_quit")
-	_update_diff()
+	gfx_button = _btn(main_box, "", "_toggle_graphics")
+	_btn(main_box, "CONTROLS", "_toggle_help")
+	_btn(main_box, "QUIT", "_quit")
+	_update_settings()
+
+	loading_label = UIStyle.label("", 16, UIStyle.TEXT_DIM)
+	loading_label.anchor_top = 1
+	loading_label.anchor_bottom = 1
+	loading_label.margin_left = 62
+	loading_label.margin_top = -40
+	add_child(loading_label)
 
 	campaign_box = PanelContainer.new()
-	campaign_box.anchor_left = 0.5
-	campaign_box.anchor_top = 0.5
-	campaign_box.margin_left = -330
-	campaign_box.margin_top = -200
-	campaign_box.margin_right = 330
-	campaign_box.margin_bottom = 260
+	campaign_box.margin_left = 500
+	campaign_box.margin_top = 60
+	campaign_box.margin_right = 1160
 	campaign_box.visible = false
 	add_child(campaign_box)
 	var cv = VBoxContainer.new()
-	cv.add_constant_override("separation", 6)
+	cv.add_constant_override("separation", 5)
 	campaign_box.add_child(cv)
-	var head = Label.new()
-	head.text = "THE LIBERATION OF VEGA"
-	head.align = Label.ALIGN_CENTER
-	head.add_color_override("font_color", UIStyle.ACCENT)
-	cv.add_child(head)
+	cv.add_child(UIStyle.label("THE LIBERATION OF VEGA", 28, UIStyle.ACCENT, "Bold"))
 	for m in Missions.MISSIONS:
 		var b = Button.new()
 		var unlocked = m["id"] <= GameState.unlocked_missions
-		var label = "%d.  %s" % [m["id"], m["title"]]
+		var label = "%02d    %s" % [m["id"], m["title"].to_upper()]
 		if not m["playable"]:
-			label += "   (in development)"
+			label += "        in development"
 		elif not unlocked:
-			label += "   (locked)"
+			label += "        locked"
 		b.text = label
 		b.align = Button.ALIGN_LEFT
+		b.rect_min_size = Vector2(0, 40)
 		b.hint_tooltip = m["briefing"]
 		b.disabled = not (m["playable"] and unlocked)
 		b.connect("pressed", self, "_start_mission", [m["id"]])
 		cv.add_child(b)
-	_btn(cv, "Back", "_show_main")
+		if not b.disabled:
+			start_buttons.append(b)
+	_btn(cv, "BACK", "_show_main")
 
 	help_panel = PanelContainer.new()
-	help_panel.anchor_left = 0.5
-	help_panel.anchor_top = 0.5
-	help_panel.margin_left = -300
-	help_panel.margin_top = -170
-	help_panel.margin_right = 300
+	help_panel.margin_left = 500
+	help_panel.margin_top = 60
+	help_panel.margin_right = 1160
 	help_panel.visible = false
 	add_child(help_panel)
 	var hv = VBoxContainer.new()
+	hv.add_constant_override("separation", 10)
 	help_panel.add_child(hv)
-	var hl = Label.new()
-	hl.text = """CONTROLS
-Left-click / drag ........ select units
-Right-click .............. move / attack / harvest Uralium
-Ctrl or Option + right-click .. attack-move
-Q ........ select whole army      X ........ stop
-H ........ jump to base           P ........ pause
-WASD / arrows / screen edges / two-finger swipe .. scroll
-Mouse wheel / pinch ...... zoom
-Sidebar: build structures, then click READY to place on rock.
+	hv.add_child(UIStyle.label("CONTROLS", 28, UIStyle.ACCENT, "Bold"))
+	hv.add_child(UIStyle.label("""Select units                       left-click or drag a box
+Move / attack / harvest      right-click (two-finger click)
+Attack-move                       Ctrl or Option + right-click
+Select whole army              Q
+Stop                                    X
+Jump to base                     H
+Pause                                  P
+Scroll                                  WASD, arrows, screen edges, two-finger swipe
+Zoom                                  mouse wheel or pinch
 
-TIPS
-Sandeaters guard their Uralium fields and swallow anything
-moving on the sand. Rock is safe. They vanish after feeding
-but always come back.
-Red mounds are pressurised Uralium - touching one sets it off."""
-	hv.add_child(hl)
-	_btn(hv, "Close", "_toggle_help")
+Build: click a structure, wait for READY, click it again and place it on rock.""", 18))
+	hv.add_child(UIStyle.label("TIPS", 22, UIStyle.ACCENT, "Bold"))
+	hv.add_child(UIStyle.label("""Sandeaters guard their Uralium fields and swallow anything moving on the sand.
+Rock is safe. They vanish after feeding, but they always come back.
+Red mounds are Uralium under pressure: touching one sets it off.""", 18))
+	_btn(hv, "CLOSE", "_toggle_help")
+
+	if not Art.is_ready:
+		for b in start_buttons:
+			b.disabled = true
+		Art.connect("progress", self, "_on_art_progress")
+		Art.connect("finished", self, "_on_art_ready")
+		Art.build()
+
+
+func _on_art_progress(f):
+	loading_label.text = "Preparing graphics...  %d%%   (first launch only)" % int(f * 100)
+
+
+func _on_art_ready():
+	loading_label.text = ""
+	for b in start_buttons:
+		b.disabled = false
 
 
 func _btn(parent, text, method, args = []):
 	var b = Button.new()
 	b.text = text
-	b.rect_min_size = Vector2(320, 42)
+	b.align = Button.ALIGN_LEFT
+	b.rect_min_size = Vector2(340, 44)
 	b.connect("pressed", self, method, args)
 	parent.add_child(b)
 	return b
 
 
-func _update_diff():
-	diff_button.text = "Difficulty: %s" % GameState.difficulty_name()
+func _update_settings():
+	diff_button.text = "DIFFICULTY  -  %s" % GameState.difficulty_name().to_upper()
+	gfx_button.text = "GRAPHICS  -  %s" % ("HIGH" if GameState.graphics_high else "FAST")
+	gfx_button.hint_tooltip = "FAST turns off glow and halves the particles. Use it if the game stutters."
 
 
 func _cycle_difficulty():
 	GameState.difficulty = (GameState.difficulty + 1) % 3
 	GameState.save_progress()
-	_update_diff()
+	_update_settings()
+
+
+func _toggle_graphics():
+	GameState.graphics_high = not GameState.graphics_high
+	GameState.save_progress()
+	_update_settings()
 
 
 func _toggle_help():
 	help_panel.visible = not help_panel.visible
-	main_box.visible = not help_panel.visible
+	campaign_box.visible = false
 
 
 func _show_campaign():
-	main_box.visible = false
-	campaign_box.visible = true
+	campaign_box.visible = not campaign_box.visible
+	help_panel.visible = false
 
 
 func _show_main():
-	main_box.visible = true
 	campaign_box.visible = false
 
 
@@ -156,50 +218,7 @@ func _quit():
 
 func _process(delta):
 	t += delta
-	update()
-
-
-func _draw():
-	var s = rect_size
-	# Sky bands (posterised, comic style).
-	var sky = [Color("#2b1b3a"), Color("#5a2d47"), Color("#a3474a"), Color("#e07a4a"), Color("#f2b35c")]
-	for i in range(sky.size()):
-		draw_rect(Rect2(0, s.y * 0.11 * i, s.x, s.y * 0.11 + 1), sky[i])
-	# Two suns.
-	draw_circle(Vector2(s.x * 0.75, s.y * 0.36), 70, Color("#ffe7a3"))
-	draw_circle(Vector2(s.x * 0.86, s.y * 0.30), 30, Color("#fff5d6"))
-	# Dunes.
-	var layers = [[0.58, Color("#c9823f")], [0.68, Color("#dc9a52")], [0.80, Color("#eab46a")]]
-	for li in range(layers.size()):
-		var y0 = s.y * layers[li][0]
-		var pts = PoolVector2Array()
-		pts.append(Vector2(0, s.y))
-		for k in range(41):
-			var x = s.x * k / 40.0
-			pts.append(Vector2(x, y0 + sin(k * 0.45 + li * 1.7 + t * 0.05) * 22 + sin(k * 0.17 + li) * 30))
-		pts.append(Vector2(s.x, s.y))
-		draw_colored_polygon(pts, layers[li][1])
-		var outline = PoolVector2Array()
-		for k in range(1, pts.size() - 1):
-			outline.append(pts[k])
-		draw_polyline(outline, Color("#1d130c"), 3.0)
-	# A sandeater breaching in the distance.
-	var wx = s.x * 0.18
-	var wy = s.y * 0.6
-	var rise = 30 + sin(t * 0.8) * 10
-	draw_arc(Vector2(wx, wy + 40), 60, PI * 1.05, PI * 1.95, 18, Color("#1d130c"), 26.0)
-	draw_arc(Vector2(wx, wy + 40), 60, PI * 1.08, PI * 1.92, 18, Color("#8e6a48"), 18.0)
-	draw_circle(Vector2(wx + 58, wy + 40 - rise * 0.2), 16, Color("#3a0f0a"))
-	# Title.
-	if font:
-		var title = "V E G A"
-		draw_set_transform(Vector2(s.x / 2, s.y * 0.2), -0.04, Vector2(5, 5))
-		var w = font.get_string_size(title).x
-		for o in [Vector2(-1, 0), Vector2(1, 0), Vector2(0, 1), Vector2(1, 1), Vector2(0, -1)]:
-			draw_string(font, Vector2(-w / 2, 0) + o, title, Color("#1d130c"))
-		draw_string(font, Vector2(-w / 2, 0), title, Color("#f0b54a"))
-		draw_set_transform(Vector2(s.x / 2, s.y * 0.2 + 40), 0, Vector2(1.6, 1.6))
-		var sub = "The Uralium Wars"
-		var w2 = font.get_string_size(sub).x
-		draw_string(font, Vector2(-w2 / 2, 0), sub, Color("#fbeed5"))
-		draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
+	# Slow drift across the map.
+	backdrop.position = Vector2(-900 - t * 9.0, -700 - t * 5.0)
+	if backdrop.position.x < -2600:
+		t = 0.0

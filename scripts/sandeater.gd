@@ -122,6 +122,8 @@ func _move(speed, delta):
 	var next = position + Vector2.RIGHT.rotated(heading) * speed * delta
 	if game.map.is_sand_at(next) and game.map.in_bounds(game.map.cell_of(next)):
 		position = next
+		if speed > GRAZE_SPEED and randf() < 0.25:
+			game.fx_dust(position, 1.6)
 	else:
 		heading += PI * rand_range(0.5, 1.0)
 
@@ -145,7 +147,7 @@ func _find_intruder():
 
 
 func _bite():
-	game.fx_text(position + Vector2(0, -60), "GULP!", Color(1, 0.85, 0.3))
+	game.fx_sand_burst(position, 1.6)
 	game.loud_noise(position, 500)
 	for u in get_tree().get_nodes_in_group("ground_units"):
 		if u.dead or Data.FACTIONS[u.faction].get("eater_safe", false):
@@ -183,6 +185,8 @@ func _ride(delta):
 	var step = Vector2.RIGHT.rotated(heading) * min(to.length(), RIDE_SPEED * delta)
 	position += step
 	trail_acc += step.length()
+	if randf() < 0.3:
+		game.fx_dust(position, 2.0)
 	if trail_acc >= 40.0:
 		trail_acc = 0.0
 		var c = game.map.cell_of(position)
@@ -190,8 +194,15 @@ func _ride(delta):
 			game.map.add_uralium(c, 90)
 
 
+func _seg(c, r):
+	# One armoured body segment: dark hide, lit towards the sun (upper left).
+	draw_circle(c + Vector2(3, 4), r, Color(0.10, 0.06, 0.03, 0.30))
+	draw_circle(c, r, Color(0.20, 0.17, 0.13))
+	draw_circle(c + Vector2(-r, -r) * 0.10, r * 0.86, Color(0.36, 0.31, 0.24))
+	draw_circle(c + Vector2(-r, -r) * 0.22, r * 0.55, Color(0.50, 0.44, 0.34))
+
+
 func _draw():
-	var ink = Color("#1d130c")
 	if state == "strike" or state == "dive":
 		var k
 		if state == "dive":
@@ -201,34 +212,44 @@ func _draw():
 		else:
 			k = clamp((1.8 - t) / 0.6, 0, 1)
 		var r = 18 + 52 * k
-		draw_circle(Vector2(0, 8), r * 1.3, Color(0.85, 0.65, 0.4, 0.6))
-		draw_circle(Vector2.ZERO, r + 4, ink)
-		draw_circle(Vector2.ZERO, r, Color("#7f8a6a"))
-		draw_circle(Vector2.ZERO, r * 0.72, Color("#3a0f0a"))
-		for ring in [0.7, 0.5]:
-			for i in range(12):
-				var a = i * TAU / 12 + ring
-				draw_line(Vector2.RIGHT.rotated(a) * r * ring, Vector2.RIGHT.rotated(a) * r * (ring - 0.18), Color("#f3e6c8"), 3.0)
+		# heaved-up sand around the mouth
+		for i in range(5):
+			var f = i / 4.0
+			draw_circle(Vector2(4, 6) * (1.0 - f), r * (1.45 - 0.2 * f), Color(0.62, 0.47, 0.30).linear_interpolate(Color(0.86, 0.70, 0.48), f))
+		draw_circle(Vector2(4, 5), r * 1.04, Color(0.10, 0.06, 0.03, 0.5))
+		_seg(Vector2.ZERO, r)
+		# throat: rings fading into darkness
+		for i in range(6):
+			var f2 = i / 5.0
+			draw_circle(Vector2(r, r) * 0.05 * f2, r * (0.74 - 0.12 * i), Color(0.34, 0.10, 0.08).linear_interpolate(Color(0.02, 0.01, 0.01), f2))
+		# rings of teeth
+		for ring in [0.74, 0.54]:
+			var n = 16 if ring > 0.6 else 11
+			for i in range(n):
+				var a = i * TAU / n + ring * 3.0
+				var d = Vector2.RIGHT.rotated(a)
+				var w = d.tangent() * r * 0.05
+				draw_colored_polygon(PoolVector2Array([d * r * ring - w, d * r * ring + w, d * r * (ring - 0.2)]), Color(0.93, 0.89, 0.78))
 		return
 	var dir = Vector2.RIGHT.rotated(heading)
 	var side = Vector2(-dir.y, dir.x)
 	if state == "ridden":
-		# Back of the sandeater above the sand, riders holding on.
-		for i in range(7):
-			var p = -dir * i * 15
-			draw_circle(p, 13 - i, ink)
-			draw_circle(p, 11 - i, Color("#7f8a6a"))
+		# The sandeater's back breaks the surface while the riders hold on.
+		for i in range(8):
+			var idx = 7 - i
+			_seg(-dir * idx * 14, 14 - idx * 1.1)
 		for i in range(min(riders, 4)):
-			var rp = -dir * (8 + i * 12) + side * (4 if i % 2 == 0 else -4)
-			draw_circle(rp, 5, ink)
-			draw_circle(rp, 4, Color("#c9a46a"))
+			var rp = -dir * (10 + i * 13) + side * (4 if i % 2 == 0 else -4)
+			draw_circle(rp + Vector2(1.5, 2), 4.5, Color(0, 0, 0, 0.35))
+			draw_circle(rp, 4.0, Color(0.70, 0.60, 0.44))
+			draw_circle(rp + Vector2(-0.8, -0.8), 2.0, Color(0.42, 0.35, 0.25))
 		return
-	# Under the sand: a travelling ripple with a red glint from the Uralium it eats.
+	# Under the sand: a moving bulge with a bow wave, lit like a small dune.
 	for i in range(6):
 		var p2 = -dir * i * 16
-		var w = 14 - i * 1.5 + sin(anim * 6 + i) * 2
-		draw_line(p2 - side * w, p2 + side * w, Color(0.55, 0.38, 0.2, 0.55 - i * 0.07), 5.0)
-	if int(anim * 3) % 3 == 0:
-		draw_circle(-dir * 20, 3, Color(0.85, 0.2, 0.15, 0.7))
+		var w = 15 - i * 1.6 + sin(anim * 6 + i) * 2
+		var a2 = 0.30 - i * 0.045
+		draw_line(p2 - side * w + Vector2(2, 3), p2 + side * w + Vector2(2, 3), Color(0.30, 0.20, 0.10, a2), 6.0, true)
+		draw_line(p2 - side * w, p2 + side * w, Color(0.98, 0.88, 0.68, a2), 3.0, true)
 	if state == "hunt":
-		draw_arc(Vector2.ZERO, 18 + sin(anim * 10) * 4, 0, TAU, 16, Color(0.6, 0.35, 0.15, 0.6), 3.0)
+		draw_arc(Vector2.ZERO, 20 + sin(anim * 10) * 4, heading - 1.2, heading + 1.2, 12, Color(0.98, 0.88, 0.68, 0.5), 3.0, true)

@@ -64,9 +64,10 @@ func _impact():
 
 func _draw():
 	if kind == "shell":
-		draw_circle(Vector2.ZERO, 5, Color("#1d130c"))
-		draw_circle(Vector2.ZERO, 3, Color("#f3c14b"))
+		draw_circle(Vector2.ZERO, 3.0, Color(0.12, 0.11, 0.10))
+		draw_circle(Vector2(-1, -1), 1.3, Color(0.8, 0.7, 0.5))
 	else:
-		draw_rect(Rect2(Vector2(-7, -2.5), Vector2(14, 5)), Color("#1d130c"))
-		draw_rect(Rect2(Vector2(-6, -1.5), Vector2(10, 3)), Color("#e8e8e8"))
-		draw_circle(Vector2(-8, 0), 3, Color(1, 0.6, 0.15))
+		draw_rect(Rect2(Vector2(-6, -1.5), Vector2(11, 3)), Color(0.78, 0.80, 0.82))
+		draw_rect(Rect2(Vector2(3, -1.5), Vector2(3, 3)), Color(0.75, 0.15, 0.1))
+		draw_circle(Vector2(-8, 0), 3.5, Color(1.6, 0.9, 0.3, 0.9))
+		draw_circle(Vector2(-11, 0), 2.2, Color(1.4, 0.5, 0.1, 0.6))

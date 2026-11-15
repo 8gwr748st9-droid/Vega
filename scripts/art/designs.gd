@@ -101,11 +101,17 @@ func tank_hull(p, pal):
 	p.paint([Vector2(-14, 6), Vector2(14, 6), Vector2(14, 7.5), Vector2(-14, 7.5)], pal["accent"])
 
 func tesla_turret(p, pal):
-	p.cyl(Vector2(-1, 0), 9.0, 3.0, pal["dark"], 0.4, 20)
-	p.rod(Vector2(3, 0), Vector2(15, 0), 3.2, pal["trim"], 0.6)
-	for r in [6.0, 4.6, 3.2]:
-		p.cyl(Vector2(-1, 0), r, 1.0, COPPER if r != 4.6 else Color(0.45, 0.28, 0.15), 0.7, 16)
-	p.dome(Vector2(16, 0), 3.0, Color(0.55, 0.8, 1.0), 0.8, 3, 12)
+	# Boxy turret with a two-pronged emitter fork; the arc forms between the prongs.
+	p.cbox(Vector2(-3, 0), Vector2(17, 15), 4.0, 3.0, pal["dark"].lightened(0.12), 0.4)
+	p.box(Vector2(-8, 0), Vector2(5, 9), 1.0, COPPER, 0.7)
+	p.rod(Vector2(3, -4.5), Vector2(19, -4.5), 2.6, pal["trim"], 0.7)
+	p.rod(Vector2(3, 4.5), Vector2(19, 4.5), 2.6, pal["trim"], 0.7)
+	for x in [8.0, 12.0, 16.0]:
+		p.rod(Vector2(x, -6.2), Vector2(x, -2.8), 1.6, COPPER, 0.8)
+		p.rod(Vector2(x, 2.8), Vector2(x, 6.2), 1.6, COPPER, 0.8)
+	p.lamp(Vector2(19, -4.5), 1.3, Color(0.6, 0.85, 1.0))
+	p.lamp(Vector2(19, 4.5), 1.3, Color(0.6, 0.85, 1.0))
+	p.paint([Vector2(-10, -1), Vector2(4, -1), Vector2(4, 1), Vector2(-10, 1)], pal["accent"])
 
 
 func siege_hull(p, pal):
@@ -135,15 +141,37 @@ func drone(p, pal):
 
 
 func gunship(p, pal):
-	p.rod(Vector2(-6, 0), Vector2(-31, 0), 4.0, pal["body"], 0.4)
-	p.box(Vector2(-30, 0), Vector2(4, 13), 1.0, pal["dark"], 0.3)
-	p.box(Vector2(-2, 0), Vector2(8, 32), 1.5, pal["dark"], 0.35)
-	p.rod(Vector2(-8, -13), Vector2(6, -13), 3.2, Color(0.25, 0.27, 0.22))
-	p.rod(Vector2(-8, 13), Vector2(6, 13), 3.2, Color(0.25, 0.27, 0.22))
-	p.prism([Vector2(18, 0), Vector2(12, -7), Vector2(-2, -8), Vector2(-12, -5), Vector2(-14, 0), Vector2(-12, 5), Vector2(-2, 8), Vector2(12, 7)], 3.0, pal["body"], 0.4)
-	p.glass([Vector2(16, 0), Vector2(11, -4.5), Vector2(4, -4.5), Vector2(4, 4.5), Vector2(11, 4.5)])
-	p.paint([Vector2(-10, -1), Vector2(2, -1), Vector2(2, 1), Vector2(-10, 1)], pal["accent"])
-	p.cyl(Vector2(0, 0), 3.0, 1.0, pal["dark"], 0.5, 12)
+	# Attack helicopter seen from above: slim fuselage, tandem canopy, stub wings with rocket pods,
+	# long tail boom with stabiliser and tail rotor. The main rotor is drawn live on top.
+	# landing skids
+	p.rod(Vector2(-10, -8), Vector2(12, -8), 1.4, Color(0.15, 0.15, 0.16))
+	p.rod(Vector2(-10, 8), Vector2(12, 8), 1.4, Color(0.15, 0.15, 0.16))
+	# tail boom, stabiliser, fin and tail rotor
+	p.prism([Vector2(-8, -3), Vector2(-34, -1.4), Vector2(-34, 1.4), Vector2(-8, 3)], 1.2, pal["body"], 0.4)
+	p.box(Vector2(-29, 0), Vector2(5, 15), 1.0, pal["body"], 0.35)
+	p.box(Vector2(-35, 0), Vector2(5, 3), 0.8, pal["dark"], 0.3)
+	p.rod(Vector2(-35, 1.5), Vector2(-35, 5), 1.2, STEEL)
+	p.paint(p.circle_pts(Vector2(-35, 6), 5.0, 14), Color(0.75, 0.78, 0.8, 0.30))
+	p.rod(Vector2(-39, 6), Vector2(-31, 6), 1.0, Color(0.1, 0.1, 0.1))
+	# stub wings with rocket pods
+	p.prism([Vector2(4, -6), Vector2(-4, -6), Vector2(-6, -17), Vector2(1, -17)], 1.2, pal["dark"], 0.35)
+	p.prism([Vector2(4, 6), Vector2(1, 17), Vector2(-6, 17), Vector2(-4, 6)], 1.2, pal["dark"], 0.35)
+	for y in [-16.0, 16.0]:
+		p.rod(Vector2(-8, y), Vector2(6, y), 4.0, Color(0.30, 0.33, 0.27), 0.4)
+		p.paint(p.circle_pts(Vector2(6, y), 1.6, 8), Color(0.05, 0.05, 0.05))
+	# fuselage: pointed nose, widest at the engine
+	p.prism([Vector2(24, 0), Vector2(18, -4), Vector2(6, -6.5), Vector2(-8, -6), Vector2(-12, -3), Vector2(-12, 3), Vector2(-8, 6), Vector2(6, 6.5), Vector2(18, 4)], 2.5, pal["body"], 0.45)
+	# tandem cockpit glass
+	p.glass([Vector2(20, 0), Vector2(16, -3), Vector2(10, -3.6), Vector2(10, 3.6), Vector2(16, 3)])
+	p.glass([Vector2(8.5, -3.8), Vector2(3, -4), Vector2(3, 4), Vector2(8.5, 3.8)])
+	# engine housing with exhausts, faction stripe, nose gun
+	p.cbox(Vector2(-5, 0), Vector2(11, 9), 2.0, 1.5, pal["dark"], 0.4)
+	p.paint(p.rect_pts(Vector2(-10.5, -3), Vector2(2.5, 2.2)), Color(0.05, 0.05, 0.05))
+	p.paint(p.rect_pts(Vector2(-10.5, 3), Vector2(2.5, 2.2)), Color(0.05, 0.05, 0.05))
+	p.paint([Vector2(-26, -0.9), Vector2(-13, -0.9), Vector2(-13, 0.9), Vector2(-26, 0.9)], pal["accent"])
+	p.rod(Vector2(22, 0), Vector2(28, 0), 1.4, Color(0.1, 0.1, 0.1), 0.6)
+	# rotor hub
+	p.cyl(Vector2(-2, 0), 2.6, 0.8, STEEL, 0.6, 10)
 
 
 func gun_turret(p, pal):
@@ -436,7 +464,7 @@ func unit_parts(kind, shape, radius):
 		"drone":
 			return ["drone", "", 36, s]
 		"heli":
-			return ["gunship", "", 76, s]
+			return ["gunship", "", 88, s]
 	return ["soldier", "", 32, s]
 
 

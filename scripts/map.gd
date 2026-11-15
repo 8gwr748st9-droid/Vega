@@ -205,9 +205,9 @@ func make_minimap_image(size):
 	for py in range(size):
 		for px in range(size):
 			var c = Vector2(floor(px * W / float(size)), floor(py * H / float(size)))
-			var col = SAND_COLORS[1] if get_type(c) == SAND else ROCK_COLORS[0]
+			var col = Color(0.78, 0.63, 0.44) if get_type(c) == SAND else Color(0.40, 0.30, 0.24)
 			if uralium.has(c):
-				col = Color("#b8382c")
+				col = Color(0.62, 0.16, 0.11)
 			img.set_pixel(px, py, col)
 	img.unlock()
 	return img

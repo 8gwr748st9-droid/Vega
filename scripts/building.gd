@@ -8,6 +8,7 @@ var progress = 0.0
 var rise = 0.0                # construction "pop-up" animation 0..1
 var anim = 0.0
 var aim = PI / 2          # gun tower turret angle
+var fx_timer = 0.0
 
 
 func setup_building(g, k, t, cell):
@@ -34,11 +35,11 @@ func cells():
 
 
 func dock_point():
-	return position + Vector2(0, size_cells.y * Data.CELL / 2.0 + 18)
+	return position + Vector2(0, size_cells.y * Data.CELL / 2.0 + 32)
 
 
 func exit_point():
-	return position + Vector2(rand_range(-20, 20), size_cells.y * Data.CELL / 2.0 + 22)
+	return position + Vector2(rand_range(-20, 20), size_cells.y * Data.CELL / 2.0 + 34)
 
 
 func enqueue(unit_kind):
@@ -63,8 +64,24 @@ func _process(delta):
 			game.spawn_unit(k, team, exit_point(), self)
 	if def.get("defense", false):
 		_defend(delta)
+	_emit_effects(delta)
 	if def["shape"] in ["tesla_coil", "refinery", "helipad", "uplink", "hq", "gun_tower"] or flash > 0 or queue.size() > 0:
 		update()
+
+
+func _emit_effects(delta):
+	fx_timer -= delta
+	if fx_timer > 0:
+		return
+	fx_timer = 0.22
+	var s = size_cells * Data.CELL
+	if def["shape"] == "power" and game.has_power(team):
+		game.fx_steam(position + Vector2(-27 if randf() < 0.5 else 27, -62))
+	var frac = hp / max_hp
+	if frac < 0.6:
+		# Damage shows as smoke, then fire.
+		var spot = position + Vector2(s.x * (fmod(anim * 0.37, 1.0) - 0.5) * 0.5, -s.y * 0.2)
+		game.fx_smoke_column(spot, frac < 0.3)
 
 
 func _defend(delta):

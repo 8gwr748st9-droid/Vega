@@ -62,7 +62,7 @@ func _ready():
 	name_label.anchor_bottom = 1
 	name_label.margin_left = 200
 	name_label.margin_top = -155
-	name_label.rect_scale = Vector2(1.4, 1.4)
+	name_label.add_font_override("font", UIStyle.font(26, "Bold"))
 	name_label.add_color_override("font_color", UIStyle.ACCENT)
 	root.add_child(name_label)
 
@@ -72,10 +72,10 @@ func _ready():
 	text_label.anchor_right = 1
 	text_label.margin_left = 200
 	text_label.margin_right = -60
-	text_label.margin_top = -118
+	text_label.margin_top = -122
 	text_label.margin_bottom = -30
 	text_label.autowrap = true
-	text_label.rect_scale = Vector2(1.15, 1.15)
+	text_label.add_font_override("font", UIStyle.font(24, "Medium"))
 	root.add_child(text_label)
 
 	hint_label = Label.new()
@@ -86,7 +86,7 @@ func _ready():
 	hint_label.anchor_bottom = 1
 	hint_label.margin_left = -300
 	hint_label.margin_top = -26
-	hint_label.add_color_override("font_color", Color(0.7, 0.65, 0.55))
+	hint_label.add_color_override("font_color", UIStyle.TEXT_DIM)
 	root.add_child(hint_label)
 
 	tween = Tween.new()
@@ -98,6 +98,8 @@ func play(new_lines):
 	index = 0
 	active = true
 	root.visible = true
+	if game != null and game.hud:
+		game.hud.root.visible = false
 	get_tree().paused = true
 	_show_line()
 
@@ -155,5 +157,7 @@ func _input(event):
 func _finish():
 	active = false
 	root.visible = false
+	if game != null and game.hud:
+		game.hud.root.visible = true
 	get_tree().paused = false
 	emit_signal("finished")

@@ -86,7 +86,9 @@ func _harvest(delta):
 		return
 	var got = game.map.take_uralium(harvest_cell, HARVEST_RATE * delta)
 	cargo += got
-	moving = true   # animate the scoop dust
+	moving = true
+	if randf() < delta * 6.0:
+		game.fx_dust(position + Vector2(radius + 4, 0).rotated(facing), 1.2, Color(0.70, 0.36, 0.26, 0.35))
 	if cargo >= def["capacity"]:
 		cargo = def["capacity"]
 		state = "returning"

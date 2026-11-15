@@ -10,6 +10,7 @@ var enemy_faction = "klingos"
 var difficulty = 1             # 0 easy, 1 normal, 2 hard
 var unlocked_missions = 1
 var map_seed = 0
+var graphics_high = true       # glow + full particle counts; turn off on slow Macs
 
 
 func _ready():
@@ -25,10 +26,12 @@ func load_progress():
 	if cfg.load(SAVE_PATH) == OK:
 		unlocked_missions = int(cfg.get_value("campaign", "unlocked", 1))
 		difficulty = int(cfg.get_value("settings", "difficulty", 1))
+		graphics_high = bool(cfg.get_value("settings", "graphics_high", true))
 
 
 func save_progress():
 	var cfg = ConfigFile.new()
 	cfg.set_value("campaign", "unlocked", unlocked_missions)
 	cfg.set_value("settings", "difficulty", difficulty)
+	cfg.set_value("settings", "graphics_high", graphics_high)
 	cfg.save(SAVE_PATH)

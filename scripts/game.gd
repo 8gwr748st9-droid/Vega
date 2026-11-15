@@ -7,6 +7,7 @@ const HarvesterScript = preload("res://scripts/harvester.gd")
 const BuildingScript = preload("res://scripts/building.gd")
 const ProjectileScript = preload("res://scripts/projectile.gd")
 const EffectScript = preload("res://scripts/effect.gd")
+const ParticlesScript = preload("res://scripts/particles.gd")
 const TracksScript = preload("res://scripts/tracks.gd")
 const BloomsScript = preload("res://scripts/blooms.gd")
 const SandeaterScript = preload("res://scripts/sandeater.gd")
@@ -41,6 +42,9 @@ var blooms
 var world
 var air_layer
 var fx_layer
+var add_material   # one shared additive material for all glowing effects
+var smoke          # normal-blend particles (smoke, dust, steam)
+var fire           # additive particles (fire, sparks, glow)
 var weather
 var overlay
 var camera
@@ -113,9 +117,36 @@ func _ready():
 	air_layer.z_index = 5
 	add_child(air_layer)
 
+	add_material = CanvasItemMaterial.new()
+	add_material.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+
+	smoke = ParticlesScript.new()
+	smoke.z_index = 6
+	smoke.setup(false)
+	add_child(smoke)
+
 	fx_layer = Node2D.new()
-	fx_layer.z_index = 6
+	fx_layer.z_index = 7
 	add_child(fx_layer)
+
+	fire = ParticlesScript.new()
+	fire.z_index = 7
+	fire.setup(true)
+	add_child(fire)
+
+	# Glow for anything brighter than white (fire, tesla, beams). GLES3 only; harmless on GLES2.
+	if GameState.graphics_high:
+		var env = Environment.new()
+		env.background_mode = Environment.BG_CANVAS
+		env.glow_enabled = true
+		env.glow_intensity = 0.6
+		env.glow_strength = 1.0
+		env.glow_bloom = 0.0
+		env.glow_hdr_threshold = 1.15
+		env.glow_blend_mode = Environment.GLOW_BLEND_MODE_ADDITIVE
+		var we = WorldEnvironment.new()
+		we.environment = env
+		add_child(we)
 
 	weather = Node2D.new()
 	weather.z_index = 8
@@ -264,55 +295,98 @@ func _fx(kind, pos, life):
 	e.kind = kind
 	e.position = pos
 	e.life = life
+	e.material = add_material
 	fx_layer.add_child(e)
 	return e
 
 
+func _rv(r):
+	return Vector2.RIGHT.rotated(randf() * TAU) * r
+
+
 func fx_explosion(pos, size = 1.0):
-	var e = _fx("explosion", pos, 0.45 + 0.2 * size)
+	var n = int((5 + 6 * size) * (1.0 if GameState.graphics_high else 0.5))
+	# flash
+	fire.emit(pos, Vector2.ZERO, 0.12, 30 * size, 70 * size, Color(2.2, 1.9, 1.4, 0.9), Color(1.5, 0.8, 0.3, 0.0), 0)
+	# fireball
+	for i in range(n):
+		var v = _rv(rand_range(20, 110) * size)
+		fire.emit(pos + v * 0.05, v, rand_range(0.35, 0.7), 10 * size, rand_range(22, 36) * size, Color(1.8, 1.0, 0.35, 0.85), Color(0.6, 0.12, 0.02, 0.0), 3.0, -30)
+	# smoke
+	for i in range(n):
+		var v2 = _rv(rand_range(10, 60) * size)
+		var g = rand_range(0.10, 0.22)
+		smoke.emit(pos + v2 * 0.2, v2 + Vector2(12, -18), rand_range(1.2, 2.4), 10 * size, rand_range(30, 52) * size, Color(g, g * 0.9, g * 0.8, 0.55), Color(g + 0.15, g + 0.13, g + 0.1, 0.0), 1.2, -14)
+	# sparks and debris
+	for i in range(n):
+		var v3 = _rv(rand_range(120, 320) * size)
+		fire.emit(pos, v3, rand_range(0.25, 0.6), 3.5, 1.0, Color(2.0, 1.5, 0.6, 1.0), Color(1.0, 0.3, 0.05, 0.0), 2.5, 260)
+	if size >= 0.7:
+		tracks.add_scorch(pos, 26 * size)
+	var e = _fx("shock", pos, 0.35)
 	e.size = size
 	if size >= 1.0:
 		loud_noise(pos, 300 * size)
-		if randf() < 0.5:
-			fx_text(pos + Vector2(0, -30), ["BOOM!", "KRAK!", "BLAM!", "WHAM!"][randi() % 4], Color(1, 0.8, 0.2))
 
 
 func fx_tracer(a, b):
-	var e = _fx("tracer", a, 0.08)
+	var e = _fx("tracer", a, 0.07)
 	e.a = a
 	e.b = b
+	fire.emit(a, Vector2.ZERO, 0.06, 6, 3, Color(1.3, 1.1, 0.7, 0.7), Color(1.2, 0.7, 0.2, 0.0), 0)
+	fire.emit(b, _rv(30), 0.15, 3, 1, Color(1.3, 1.1, 0.7, 0.8), Color(1.0, 0.5, 0.1, 0.0))
+	if randf() < 0.5:
+		smoke.emit(b, _rv(15) + Vector2(0, -10), 0.5, 3, 9, Color(0.75, 0.62, 0.45, 0.4), Color(0.75, 0.62, 0.45, 0.0))
 
 
 func fx_tesla(a, b):
-	var e = _fx("tesla", a, 0.25)
+	var e = _fx("tesla", a, 0.28)
 	e.a = a
 	e.b = b
-	var pts = [a]
-	for i in range(1, 7):
-		var p = a.linear_interpolate(b, i / 7.0)
-		pts.append(p + Vector2(rand_range(-10, 10), rand_range(-10, 10)))
-	pts.append(b)
-	e.points = pts
-	if randf() < 0.35:
-		fx_text(b + Vector2(0, -24), "ZZZAP!", Color(0.6, 0.9, 1.0))
+	fire.emit(a, Vector2.ZERO, 0.25, 16, 8, Color(0.9, 1.5, 2.4, 0.8), Color(0.3, 0.6, 1.5, 0.0), 0)
+	fire.emit(b, Vector2.ZERO, 0.3, 26, 10, Color(1.0, 1.6, 2.4, 0.9), Color(0.3, 0.6, 1.5, 0.0), 0)
+	for i in range(6):
+		fire.emit(b, _rv(rand_range(60, 200)), rand_range(0.2, 0.45), 3, 1, Color(1.4, 1.8, 2.4, 1.0), Color(0.4, 0.7, 1.6, 0.0), 2.0, 200)
+	tracks.add_scorch(b, 10)
 
 
 func fx_puff(pos):
-	_fx("puff", pos, 0.5)
+	smoke.emit(pos, _rv(8), 0.7, 3, 10, Color(0.85, 0.85, 0.85, 0.45), Color(0.6, 0.6, 0.6, 0.0))
+
+
+func fx_dust(pos, amount = 1.0, col = Color(0.84, 0.70, 0.50, 0.30)):
+	var c2 = col
+	c2.a = 0.0
+	smoke.emit(pos + _rv(4), _rv(14) + Vector2(10, -4), rand_range(0.7, 1.3), 5 * amount, rand_range(14, 22) * amount, col, c2, 1.0)
+
+
+func fx_smoke_column(pos, hot = false):
+	var g = rand_range(0.08, 0.16)
+	smoke.emit(pos + _rv(4), Vector2(rand_range(12, 26), rand_range(-46, -30)), rand_range(1.6, 2.6), 6, rand_range(20, 30), Color(g, g, g, 0.5), Color(g + 0.2, g + 0.2, g + 0.2, 0.0), 0.3)
+	if hot:
+		fire.emit(pos + _rv(5), Vector2(rand_range(-6, 6), rand_range(-40, -20)), rand_range(0.3, 0.6), 9, 3, Color(1.8, 0.9, 0.25, 0.8), Color(0.8, 0.15, 0.02, 0.0), 0.5)
+
+
+func fx_steam(pos):
+	smoke.emit(pos + _rv(6), Vector2(rand_range(14, 24), rand_range(-22, -12)), rand_range(2.0, 3.2), 9, rand_range(26, 38), Color(1, 1, 1, 0.22), Color(1, 1, 1, 0.0), 0.2)
+
+
+func fx_sand_burst(pos, size = 1.0):
+	for i in range(int(14 * size)):
+		var v = _rv(rand_range(40, 170) * size)
+		smoke.emit(pos + v * 0.1, v + Vector2(0, -40), rand_range(0.7, 1.5), 8 * size, rand_range(24, 40) * size, Color(0.80, 0.64, 0.42, 0.6), Color(0.86, 0.72, 0.52, 0.0), 1.6, 60)
 
 
 func fx_uralium_cloud(pos):
-	var e = _fx("uralium_cloud", pos, 3.0)
-	e.size = 1.2
-	fx_explosion(pos, 2.2)
+	fx_explosion(pos, 2.4)
+	for i in range(26):
+		var v = _rv(rand_range(30, 190))
+		smoke.emit(pos + v * 0.2, v, rand_range(2.5, 4.5), 30, rand_range(70, 110), Color(0.62, 0.10, 0.07, 0.5), Color(0.5, 0.16, 0.10, 0.0), 0.9)
 
 
-func fx_text(pos, text, color):
-	var e = _fx("text", pos, 1.1)
-	e.text = text
-	e.color = color
-	e.font = font
-	e.z_index = 10
+func fx_text(_pos, _text, _color):
+	# Comic lettering was removed with the move to the semi-realistic look.
+	pass
 
 
 func loud_noise(pos, radius):
@@ -387,6 +461,72 @@ func nearest_building(team, kind, pos):
 			best_d = d
 			best = b
 	return best
+
+
+func _seg_hits_rect(a, b, r):
+	# Liang-Barsky: does the segment a-b pass through rectangle r?
+	var d = b - a
+	var t0 = 0.0
+	var t1 = 1.0
+	for axis in range(2):
+		var da = d.x if axis == 0 else d.y
+		var lo = (r.position.x - a.x) if axis == 0 else (r.position.y - a.y)
+		var hi = (r.end.x - a.x) if axis == 0 else (r.end.y - a.y)
+		if abs(da) < 0.0001:
+			if lo > 0 or hi < 0:
+				return false
+		else:
+			var ta = lo / da
+			var tb = hi / da
+			if ta > tb:
+				var tmp = ta
+				ta = tb
+				tb = tmp
+			t0 = max(t0, ta)
+			t1 = min(t1, tb)
+			if t0 > t1:
+				return false
+	return true
+
+
+func detour(from, to, radius):
+	# Steering around buildings: if one blocks the straight line, head for its best corner first.
+	var blocker = null
+	var best_d = INF
+	for b in get_tree().get_nodes_in_group("buildings"):
+		if b.dead:
+			continue
+		var core = b.get_rect().grow(radius - 1)
+		if core.has_point(to):
+			continue
+		if _seg_hits_rect(from, to, core):
+			var d = b.position.distance_squared_to(from)
+			if d < best_d:
+				best_d = d
+				blocker = b
+	if blocker == null:
+		return to
+	var core2 = blocker.get_rect().grow(radius - 1)
+	var outer = blocker.get_rect().grow(radius + 8)
+	var corners = [outer.position, Vector2(outer.end.x, outer.position.y), outer.end, Vector2(outer.position.x, outer.end.y)]
+	var best = null
+	var best_len = INF
+	for pass_ in range(2):
+		for c in corners:
+			if pass_ == 0 and _seg_hits_rect(from, c, core2):
+				continue
+			if from.distance_to(c) < 10:
+				continue
+			var l = from.distance_to(c) + c.distance_to(to)
+			# A corner that still has the building between it and the goal is a worse choice.
+			if _seg_hits_rect(c, to, core2):
+				l += 600
+			if l < best_len:
+				best_len = l
+				best = c
+		if best != null:
+			break
+	return best if best != null else to
 
 
 func requirements_met(team, kind):
@@ -678,6 +818,7 @@ func fire_orbital(team, pos):
 	orbital_charge[team] = 0.0
 	var o = OrbitalScript.new()
 	o.setup(self, team, pos)
+	o.material = add_material
 	fx_layer.add_child(o)
 	if team != player_team:
 		notify("Enemy orbital strike incoming!")

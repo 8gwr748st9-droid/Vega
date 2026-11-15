@@ -1,16 +1,14 @@
 extends Node2D
-# Short-lived visual effects: explosions, tracers, tesla arcs, smoke puffs, comic text.
+# Short-lived line effects drawn with additive blending: tracers, tesla bolts, shockwaves.
 
-var kind = "explosion"
-var life = 0.5
+var kind = "tracer"
+var life = 0.3
 var age = 0.0
 var size = 1.0
 var a = Vector2()
 var b = Vector2()
-var text = ""
-var color = Color(1, 1, 1)
-var font = null
-var points = []
+var jag = 0.0
+var pts = PoolVector2Array()
 
 
 func _process(delta):
@@ -18,50 +16,36 @@ func _process(delta):
 	if age >= life:
 		queue_free()
 		return
-	if kind == "text":
-		position.y -= delta * 30.0
 	update()
+
+
+func _bolt(from, to, spread):
+	var out = PoolVector2Array([from])
+	var n = max(3, int(from.distance_to(to) / 22.0))
+	var side = (to - from).normalized().tangent()
+	for i in range(1, n):
+		out.append(from.linear_interpolate(to, float(i) / n) + side * rand_range(-spread, spread))
+	out.append(to)
+	return out
 
 
 func _draw():
 	var t = age / life
+	var fade = 1.0 - t
 	match kind:
-		"explosion":
-			var r = (14 + 36 * t) * size
-			draw_circle(Vector2.ZERO, r, Color(0.15, 0.1, 0.07, 0.5 * (1 - t)))
-			draw_circle(Vector2.ZERO, r * 0.8, Color(1.0, 0.55, 0.12, 1 - t))
-			draw_circle(Vector2.ZERO, r * 0.45, Color(1.0, 0.95, 0.5, 1 - t))
-			# Comic starburst.
-			var pts = PoolVector2Array()
-			for k in range(16):
-				var rr = r * (1.25 if k % 2 == 0 else 0.75)
-				pts.append(Vector2.RIGHT.rotated(k * TAU / 16 + size) * rr)
-			pts.append(pts[0])
-			draw_polyline(pts, Color(0.12, 0.08, 0.05, 1 - t), 3.0)
 		"tracer":
-			draw_line(a - position, b - position, Color(1, 0.95, 0.6, 1 - t), 2.0)
-			draw_circle(b - position, 3, Color(1, 0.9, 0.5, 1 - t))
+			var head = a.linear_interpolate(b, min(1.0, t * 1.4 + 0.3)) - position
+			var tail = a.linear_interpolate(b, max(0.0, t * 1.4 - 0.2)) - position
+			draw_line(tail, head, Color(1.1, 0.95, 0.6, fade * 0.8), 1.2, true)
 		"tesla":
-			var pts2 = PoolVector2Array()
-			for p in points:
-				pts2.append(p - position)
-			draw_polyline(pts2, Color(0.35, 0.7, 1.0, 1 - t), 6.0)
-			draw_polyline(pts2, Color(0.9, 0.98, 1.0, 1 - t), 2.5)
-			draw_circle(b - position, 10 * (1 - t), Color(0.7, 0.9, 1.0, 0.8))
-		"puff":
-			draw_circle(Vector2.ZERO, 3 + 6 * t, Color(0.85, 0.8, 0.7, 0.5 * (1 - t)))
-		"uralium_cloud":
-			for k in range(9):
-				var dir = Vector2.RIGHT.rotated(k * TAU / 9 + k)
-				draw_circle(dir * 70 * size * (0.4 + t), 50 * size * (0.6 + t * 0.6), Color(0.78, 0.16, 0.1, 0.45 * (1 - t)))
-		"text":
-			if font:
-				var s = 2.0
-				draw_set_transform(Vector2.ZERO, -0.12, Vector2(s, s))
-				var w = font.get_string_size(text).x
-				var p = Vector2(-w / 2, 0)
-				for o in [Vector2(-1, 0), Vector2(1, 0), Vector2(0, -1), Vector2(0, 1), Vector2(1, 1)]:
-					draw_string(font, p + o, text, Color(0.08, 0.05, 0.03, 1 - t * t))
-				var c = color
-				c.a = 1 - t * t
-				draw_string(font, p, text, c)
+			# The bolt re-forms every few frames, like a real arc.
+			jag -= 1
+			if jag <= 0:
+				jag = 2
+				pts = _bolt(a - position, b - position, 12.0)
+			draw_polyline(pts, Color(0.25, 0.5, 1.6, fade * 0.6), 7.0, true)
+			draw_polyline(pts, Color(0.8, 1.2, 2.2, fade), 2.5, true)
+			var branch = _bolt(pts[int(pts.size() / 2)], pts[int(pts.size() / 2)] + Vector2(rand_range(-40, 40), rand_range(-40, 40)), 6.0)
+			draw_polyline(branch, Color(0.6, 0.9, 1.8, fade * 0.7), 1.5, true)
+		"shock":
+			draw_arc(Vector2.ZERO, (16 + 90 * t) * size, 0, TAU, 40, Color(1.2, 1.0, 0.8, 0.35 * fade), 3.0 * fade + 1.0, true)

@@ -66,10 +66,11 @@ func _draw():
 		draw_arc(aim - position, RADIUS, 0, TAU, 32, Color(1, 1, 1, 0.25), 2.0)
 		draw_line(p - position + Vector2(0, -900), p - position, Color(0.5, 0.9, 1.0, 0.25 + 0.5 * k), 4 + 10 * k)
 		draw_arc(p - position, RADIUS * (1.2 - 0.4 * k), 0, TAU, 32, Color(0.5, 0.9, 1.0, 0.8), 3.0)
-		draw_circle(p - position, 6, ink)
+		draw_circle(p - position, 5, Color(1.5, 2.0, 2.4, 0.9))
 	else:
 		var f = clamp((t - WARMUP) / 1.2, 0, 1)
 		var c = impact - position
-		draw_line(c + Vector2(0, -1200), c, Color(0.8, 0.97, 1.0, 1 - f), 60 * (1 - f) + 4)
+		draw_line(c + Vector2(0, -1200), c, Color(0.5, 0.9, 1.6, 0.6 * (1 - f)), 90 * (1 - f) + 8)
+		draw_line(c + Vector2(0, -1200), c, Color(1.6, 2.0, 2.4, 1 - f), 40 * (1 - f) + 3)
 		draw_circle(c, RADIUS * (0.6 + f * 0.6), Color(0.6, 0.9, 1.0, 0.6 * (1 - f)))
 		draw_arc(c, RADIUS * (0.5 + f), 0, TAU, 40, Color(1, 1, 1, 1 - f), 6.0)

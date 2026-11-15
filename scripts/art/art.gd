@@ -11,7 +11,7 @@ signal finished
 const PainterScript = preload("res://scripts/art/painter.gd")
 const DesignsScript = preload("res://scripts/art/designs.gd")
 
-const VERSION = "5"
+const VERSION = "6"
 const FRAMES = 32
 const COLS = 8
 const SS = 2
@@ -70,6 +70,7 @@ func _cache_path(id):
 
 func _build():
 	var vp = Viewport.new()
+	vp.own_world = true          # keep the game's glow environment out of the sprite renderer
 	vp.transparent_bg = true
 	vp.hdr = false
 	vp.usage = Viewport.USAGE_2D

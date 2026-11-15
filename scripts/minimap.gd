@@ -13,8 +13,13 @@ func _ready():
 
 
 func _rebuild_texture():
-	tex = ImageTexture.new()
-	tex.create_from_image(game.map.make_minimap_image(128), 0)
+	var img = game.map.make_minimap_image(128)
+	if tex == null:
+		tex = ImageTexture.new()
+		tex.create_from_image(img, 0)
+	else:
+		tex.set_data(img)   # update in place; replacing the texture mid-frame upsets the renderer
+	update()
 
 
 func _process(delta):
@@ -36,13 +41,13 @@ func _draw():
 	draw_texture_rect(tex, Rect2(Vector2.ZERO, rect_size), false)
 	for b in get_tree().get_nodes_in_group("buildings"):
 		var r = Rect2(_to_mini(b.position) - Vector2(3, 3), Vector2(6, 6))
-		draw_rect(r, b.team_color())
+		draw_rect(r, b.team_color().lightened(0.15))
 	for u in get_tree().get_nodes_in_group("units"):
 		draw_rect(Rect2(_to_mini(u.position) - Vector2(1.5, 1.5), Vector2(3, 3)), u.team_color().lightened(0.3))
 	var vp = game.get_viewport().get_visible_rect().size * game.camera.zoom
 	var cam = Rect2(_to_mini(game.camera.position - vp / 2), _to_mini(vp))
 	draw_rect(cam, Color(1, 1, 1, 0.9), false, 1.5)
-	draw_rect(Rect2(Vector2.ZERO, rect_size), Color("#1d130c"), false, 3.0)
+	draw_rect(Rect2(Vector2.ZERO, rect_size), Color(1, 1, 1, 0.18), false, 1.0)
 
 
 func _gui_input(event):

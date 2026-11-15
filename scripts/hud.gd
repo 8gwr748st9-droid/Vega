@@ -1,27 +1,28 @@
 extends CanvasLayer
-# In-game interface: RA2-style sidebar (minimap, credits, power, build buttons), messages, objectives.
+# In-game interface: sidebar (minimap, resources, build cards with icons), messages, objectives.
 
 const UIStyle = preload("res://scripts/ui_style.gd")
 const MinimapScript = preload("res://scripts/minimap.gd")
 
-const SIDEBAR_W = 240
+const SIDEBAR_W = 248
+const CARD = Vector2(110, 86)
 
 var game
 var root
 var credits_label
 var power_label
+var power_bar
 var message_label
 var message_time = 0.0
 var objectives_label
 var info_label
-var struct_grid
-var unit_grid
-var struct_buttons = {}
-var unit_buttons = {}
+var struct_cards = {}
+var unit_cards = {}
 var orbital_button
 var refresh = 0.0
 var paused_label
 var game_over_panel
+var shown_credits = 0.0
 
 
 func _ready():
@@ -46,16 +47,14 @@ func _ready():
 	vb.anchor_bottom = 1
 	vb.margin_left = 10
 	vb.margin_right = -10
-	vb.margin_top = 10
-	vb.margin_bottom = -10
-	vb.add_constant_override("separation", 6)
+	vb.margin_top = 8
+	vb.margin_bottom = -8
+	vb.add_constant_override("separation", 5)
 	side.add_child(vb)
 
 	var f = game.team_faction[game.player_team]
-	var title = Label.new()
-	title.text = Data.FACTIONS[f]["name"].to_upper()
+	var title = UIStyle.label(Data.FACTIONS[f]["name"].to_upper(), 20, Data.faction_color(f).lightened(0.35), "Bold")
 	title.align = Label.ALIGN_CENTER
-	title.add_color_override("font_color", Data.faction_color(f).lightened(0.3))
 	vb.add_child(title)
 
 	var mm = MinimapScript.new()
@@ -63,11 +62,26 @@ func _ready():
 	mm.rect_min_size = Vector2(SIDEBAR_W - 20, SIDEBAR_W - 20)
 	vb.add_child(mm)
 
-	credits_label = Label.new()
-	credits_label.add_color_override("font_color", UIStyle.ACCENT)
-	vb.add_child(credits_label)
-	power_label = Label.new()
-	vb.add_child(power_label)
+	var res = HBoxContainer.new()
+	vb.add_child(res)
+	res.add_child(UIStyle.label("URALIUM", 14, UIStyle.TEXT_DIM))
+	credits_label = UIStyle.label("0", 24, UIStyle.ACCENT, "Bold")
+	credits_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	credits_label.align = Label.ALIGN_RIGHT
+	res.add_child(credits_label)
+
+	var pw = HBoxContainer.new()
+	vb.add_child(pw)
+	pw.add_child(UIStyle.label("POWER", 14, UIStyle.TEXT_DIM))
+	power_label = UIStyle.label("", 16)
+	power_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	power_label.align = Label.ALIGN_RIGHT
+	pw.add_child(power_label)
+	power_bar = ProgressBar.new()
+	power_bar.percent_visible = false
+	power_bar.rect_min_size = Vector2(0, 5)
+	power_bar.add_stylebox_override("bg", UIStyle.box(Color(1, 1, 1, 0.08), Color(0, 0, 0, 0), 0, 2, 0))
+	vb.add_child(power_bar)
 
 	var scroll = ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -75,77 +89,106 @@ func _ready():
 	vb.add_child(scroll)
 	var lists = VBoxContainer.new()
 	lists.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	lists.add_constant_override("separation", 5)
 	scroll.add_child(lists)
 
-	var l1 = Label.new()
-	l1.text = "STRUCTURES"
-	lists.add_child(l1)
-	struct_grid = GridContainer.new()
-	struct_grid.columns = 2
-	lists.add_child(struct_grid)
+	lists.add_child(UIStyle.label("STRUCTURES", 14, UIStyle.TEXT_DIM))
+	var sg = GridContainer.new()
+	sg.columns = 2
+	sg.add_constant_override("hseparation", 5)
+	sg.add_constant_override("vseparation", 5)
+	lists.add_child(sg)
 	for k in Data.buildings_for(f, game.tech):
 		if k == "hq":
 			continue
-		var b = _make_button()
-		b.connect("pressed", self, "_on_struct_pressed", [k])
-		struct_grid.add_child(b)
-		struct_buttons[k] = b
+		var card = _make_card(k + "/" + (f if Data.BUILDINGS[k]["faction"] == "any" else Data.BUILDINGS[k]["faction"]))
+		card["button"].connect("pressed", self, "_on_struct_pressed", [k])
+		sg.add_child(card["button"])
+		struct_cards[k] = card
 
-	var l2 = Label.new()
-	l2.text = "UNITS"
-	lists.add_child(l2)
-	unit_grid = GridContainer.new()
-	unit_grid.columns = 2
-	lists.add_child(unit_grid)
+	lists.add_child(UIStyle.label("UNITS", 14, UIStyle.TEXT_DIM))
+	var ug = GridContainer.new()
+	ug.columns = 2
+	ug.add_constant_override("hseparation", 5)
+	ug.add_constant_override("vseparation", 5)
+	lists.add_child(ug)
 	for k in Data.units_for(f, game.tech):
-		var b2 = _make_button()
-		b2.connect("pressed", self, "_on_unit_pressed", [k])
-		unit_grid.add_child(b2)
-		unit_buttons[k] = b2
+		var card2 = _make_card(k + "/hull")
+		card2["button"].connect("pressed", self, "_on_unit_pressed", [k])
+		ug.add_child(card2["button"])
+		unit_cards[k] = card2
 
-	orbital_button = _make_button()
-	orbital_button.rect_min_size = Vector2(SIDEBAR_W - 34, 44)
+	orbital_button = Button.new()
+	orbital_button.rect_min_size = Vector2(0, 46)
 	orbital_button.visible = false
 	orbital_button.connect("pressed", self, "_on_orbital_pressed")
 	lists.add_child(orbital_button)
 
-	message_label = Label.new()
-	message_label.margin_left = 16
+	message_label = UIStyle.label("", 24, Color(1, 0.93, 0.72), "Bold")
+	message_label.margin_left = 18
 	message_label.margin_top = 12
-	message_label.add_color_override("font_color", Color(1, 0.92, 0.6))
-	message_label.rect_scale = Vector2(1.4, 1.4)
+	message_label.add_color_override("font_color_shadow", Color(0, 0, 0, 0.8))
+	message_label.add_constant_override("shadow_offset_x", 1)
+	message_label.add_constant_override("shadow_offset_y", 2)
 	root.add_child(message_label)
 
-	objectives_label = Label.new()
-	objectives_label.margin_left = 16
-	objectives_label.margin_top = 50
+	objectives_label = UIStyle.label("", 17)
+	objectives_label.margin_left = 18
+	objectives_label.margin_top = 48
+	objectives_label.add_color_override("font_color_shadow", Color(0, 0, 0, 0.8))
 	root.add_child(objectives_label)
 
-	info_label = Label.new()
+	info_label = UIStyle.label("", 16, UIStyle.TEXT)
 	info_label.anchor_top = 1
 	info_label.anchor_bottom = 1
-	info_label.margin_left = 16
-	info_label.margin_top = -60
+	info_label.margin_left = 18
+	info_label.margin_top = -56
+	info_label.add_color_override("font_color_shadow", Color(0, 0, 0, 0.85))
 	root.add_child(info_label)
 
-	paused_label = Label.new()
-	paused_label.text = "PAUSED  (press P)"
-	paused_label.anchor_left = 0.5
+	paused_label = UIStyle.label("PAUSED", 64, Color(1, 1, 1, 0.9), "Bold")
+	paused_label.anchor_right = 1
 	paused_label.anchor_top = 0.4
-	paused_label.rect_scale = Vector2(3, 3)
-	paused_label.margin_left = -150
+	paused_label.margin_right = -SIDEBAR_W
+	paused_label.align = Label.ALIGN_CENTER
 	paused_label.visible = false
 	root.add_child(paused_label)
 
 	_refresh()
 
 
-func _make_button():
+func _make_card(art_id):
+	# A build button: picture on top, name and price/status below, progress strip at the bottom.
 	var b = Button.new()
-	b.rect_min_size = Vector2((SIDEBAR_W - 34) / 2, 54)
-	b.clip_text = true
-	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	return b
+	b.rect_min_size = CARD
+	b.rect_clip_content = true
+	var icon = TextureRect.new()
+	icon.expand = true
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	icon.rect_position = Vector2(6, 2)
+	icon.rect_size = Vector2(CARD.x - 12, 48)
+	b.add_child(icon)
+	var name_l = UIStyle.label("", 14)
+	name_l.rect_position = Vector2(4, 48)
+	name_l.rect_size = Vector2(CARD.x - 8, 16)
+	name_l.align = Label.ALIGN_CENTER
+	name_l.clip_text = true
+	name_l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(name_l)
+	var status = UIStyle.label("", 14, UIStyle.ACCENT)
+	status.rect_position = Vector2(4, 64)
+	status.rect_size = Vector2(CARD.x - 8, 16)
+	status.align = Label.ALIGN_CENTER
+	status.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(status)
+	var bar = ColorRect.new()
+	bar.color = UIStyle.ACCENT
+	bar.rect_position = Vector2(0, CARD.y - 3)
+	bar.rect_size = Vector2(0, 3)
+	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(bar)
+	return {"button": b, "icon": icon, "name": name_l, "status": status, "bar": bar, "art": art_id}
 
 
 func _on_struct_pressed(kind):
@@ -175,6 +218,7 @@ func _on_unit_pressed(kind):
 func show_message(text):
 	if message_label:
 		message_label.text = text
+		message_label.modulate.a = 1.0
 		message_time = 5.0
 
 
@@ -184,8 +228,14 @@ func set_objectives(text):
 
 func _process(delta):
 	message_time -= delta
-	if message_time <= 0 and message_label:
-		message_label.text = ""
+	if message_label and message_time < 1.0:
+		message_label.modulate.a = clamp(message_time, 0.0, 1.0)
+	# Credits tick up and down smoothly instead of jumping.
+	var target = game.credits[game.player_team]
+	shown_credits = lerp(shown_credits, target, min(1.0, delta * 8.0))
+	if abs(shown_credits - target) < 1.0:
+		shown_credits = target
+	credits_label.text = str(int(round(shown_credits)))
 	refresh -= delta
 	if refresh <= 0:
 		refresh = 0.2
@@ -200,41 +250,74 @@ func _unhandled_key_input(event):
 		paused_label.visible = get_tree().paused
 
 
+func _set_card(card, title, status, status_col, disabled, frac, tip):
+	if card["icon"].texture == null and Art.has(card["art"]):
+		card["icon"].texture = Art.icon_texture(card["art"])
+	card["name"].text = title
+	card["status"].text = status
+	card["status"].add_color_override("font_color", status_col)
+	card["button"].disabled = disabled
+	card["button"].hint_tooltip = tip
+	card["icon"].modulate = Color(1, 1, 1, 0.3) if disabled else Color(1, 1, 1, 1)
+	card["name"].modulate = Color(1, 1, 1, 0.45) if disabled else Color(1, 1, 1, 1)
+	card["bar"].rect_size = Vector2(CARD.x * clamp(frac, 0, 1), 3)
+
+
 func _refresh():
 	var t = game.player_team
-	credits_label.text = "URALIUM  %d" % int(game.credits[t])
 	var ok = game.has_power(t)
-	power_label.text = "POWER  %d / %d%s" % [game.power_used[t], game.power_made[t], "" if ok else "   LOW!"]
-	power_label.add_color_override("font_color", Color(0.5, 1, 0.5) if ok else Color(1, 0.4, 0.3))
+	power_label.text = "%d / %d" % [game.power_used[t], game.power_made[t]]
+	power_label.add_color_override("font_color", UIStyle.GOOD if ok else UIStyle.BAD)
+	power_bar.max_value = max(1, game.power_made[t])
+	power_bar.value = min(game.power_used[t], game.power_made[t])
+	power_bar.add_stylebox_override("fg", UIStyle.box(UIStyle.GOOD if ok else UIStyle.BAD, Color(0, 0, 0, 0), 0, 2, 0))
 
 	var sb = game.struct_build[t]
-	for k in struct_buttons.keys():
-		var b = struct_buttons[k]
+	for k in struct_cards.keys():
 		var d = Data.get_def(k)
 		var status = "$%d" % d["cost"]
+		var col = UIStyle.ACCENT
+		var frac = 0.0
 		if sb["kind"] == k:
-			status = "READY - place" if sb["ready"] else "%d%%" % int(100 * sb["progress"] / d["build_time"])
-		b.text = "%s\n%s" % [d["name"], status]
-		b.disabled = not game.requirements_met(t, k) or (sb["kind"] != "" and sb["kind"] != k)
-		b.hint_tooltip = "Needs: %s" % PoolStringArray(d.get("requires", [])).join(", ")
-	for k in unit_buttons.keys():
-		var b2 = unit_buttons[k]
+			frac = sb["progress"] / d["build_time"]
+			if sb["ready"]:
+				status = "READY - PLACE"
+				col = UIStyle.GOOD
+				frac = 1.0
+			else:
+				status = "%d%%" % int(100 * frac)
+		var locked = not game.requirements_met(t, k)
+		var names = []
+		for r in d.get("requires", []):
+			names.append(Data.get_def(r)["name"])
+		var tip = "%s\nPower: %+d" % [d["name"], d.get("power", 0)]
+		if locked:
+			tip += "\nNeeds: %s" % PoolStringArray(names).join(", ")
+		_set_card(struct_cards[k], d["name"], status, col, locked or (sb["kind"] != "" and sb["kind"] != k), frac, tip)
+	for k in unit_cards.keys():
 		var d2 = Data.get_def(k)
 		var q = game.queued_count(t, k)
-		b2.text = "%s\n$%d%s" % [d2["name"], d2["cost"], ("   x%d" % q) if q > 0 else ""]
-		b2.disabled = game.producers_for(t, k).empty()
-		b2.hint_tooltip = "Built at: %s" % Data.get_def(d2["built_at"])["name"]
+		var producers = game.producers_for(t, k)
+		var frac2 = 0.0
+		for b in producers:
+			if b.queue.size() > 0 and b.queue[0] == k:
+				frac2 = max(frac2, b.progress / d2["build_time"])
+		var status2 = "$%d" % d2["cost"]
+		if q > 0:
+			status2 += "   x%d" % q
+		_set_card(unit_cards[k], d2["name"], status2, UIStyle.ACCENT, producers.empty(), frac2,
+			"%s\nBuilt at: %s" % [d2["name"], Data.get_def(d2["built_at"])["name"]])
 
 	var has_uplink = game.has_building(t, "orbital_uplink")
 	orbital_button.visible = has_uplink
 	if has_uplink:
 		var pct = int(100 * game.orbital_charge[t] / game.orbital_time())
 		if game.targeting == "orbital":
-			orbital_button.text = "ORBITAL STRIKE\nchoose target..."
+			orbital_button.text = "ORBITAL STRIKE  -  choose target"
 		elif pct >= 100:
-			orbital_button.text = "ORBITAL STRIKE\nREADY"
+			orbital_button.text = "ORBITAL STRIKE  -  READY"
 		else:
-			orbital_button.text = "ORBITAL STRIKE\ncharging %d%%" % pct
+			orbital_button.text = "ORBITAL STRIKE  -  %d%%" % pct
 		orbital_button.disabled = pct < 100
 
 	var sel = []
@@ -243,13 +326,15 @@ func _refresh():
 			sel.append(s)
 	if sel.size() == 1:
 		var e = sel[0]
-		info_label.text = "%s   %d / %d" % [e.def["name"], int(e.hp), int(e.max_hp)]
+		info_label.text = "%s     %d / %d" % [e.def["name"].to_upper(), int(e.hp), int(e.max_hp)]
 		if e.def.get("harvester", false):
-			info_label.text += "   cargo %d" % int(e.cargo)
+			info_label.text += "     CARGO %d" % int(e.cargo)
 	elif sel.size() > 1:
-		info_label.text = "%d units selected" % sel.size()
+		info_label.text = "%d UNITS SELECTED" % sel.size()
+	elif game.elapsed < 45:
+		info_label.text = "Drag: select    Right-click: move / attack    Ctrl or Option + right-click: attack-move\nQ: select army    X: stop    H: home    P: pause    WASD, edges or trackpad: scroll"
 	else:
-		info_label.text = "Drag: select   Right-click: move/attack   Ctrl/Option+right-click: attack-move\nQ: select army   X: stop   H: home   P: pause   WASD/edges/trackpad: scroll"
+		info_label.text = ""
 
 
 func show_game_over(won):
@@ -257,25 +342,22 @@ func show_game_over(won):
 	game_over_panel = PanelContainer.new()
 	game_over_panel.anchor_left = 0.5
 	game_over_panel.anchor_top = 0.5
-	game_over_panel.margin_left = -220
-	game_over_panel.margin_top = -90
-	game_over_panel.margin_right = 220 - SIDEBAR_W
+	game_over_panel.margin_left = -230 - SIDEBAR_W / 2
+	game_over_panel.margin_top = -110
+	game_over_panel.margin_right = 230 - SIDEBAR_W / 2
 	root.add_child(game_over_panel)
 	var vb = VBoxContainer.new()
-	vb.add_constant_override("separation", 14)
+	vb.add_constant_override("separation", 12)
 	game_over_panel.add_child(vb)
-	var l = Label.new()
-	l.text = "VICTORY!" if won else "DEFEAT"
+	var l = UIStyle.label("VICTORY" if won else "DEFEAT", 56, UIStyle.ACCENT if won else UIStyle.BAD, "Bold")
 	l.align = Label.ALIGN_CENTER
-	l.add_color_override("font_color", UIStyle.ACCENT if won else Color(1, 0.4, 0.3))
 	vb.add_child(l)
-	var sub = Label.new()
-	sub.text = "Vega remembers your name." if won else "The sands swallow another army."
+	var sub = UIStyle.label("Vega remembers your name." if won else "The sands swallow another army.", 20, UIStyle.TEXT_DIM)
 	sub.align = Label.ALIGN_CENTER
 	vb.add_child(sub)
 	var b = Button.new()
-	b.text = "Back to menu"
-	b.rect_min_size = Vector2(200, 44)
+	b.text = "BACK TO MENU"
+	b.rect_min_size = Vector2(220, 46)
 	b.connect("pressed", self, "_to_menu")
 	vb.add_child(b)
 
