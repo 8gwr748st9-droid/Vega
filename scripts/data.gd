@@ -3,7 +3,7 @@ extends Node
 #
 # Common keys
 #   faction     : which faction can build it ("any" = every faction with a base)
-#   cost        : spice credits
+#   cost        : uralium credits
 #   build_time  : seconds at full power
 #   tech        : campaign tech level needed (skirmish uses tech 3)
 #   requires    : buildings that must exist before this can be built
@@ -33,8 +33,8 @@ const FACTIONS = {
 		"dark": Color(0.55, 0.38, 0.06),
 		"sand_speed": 1.3,
 		"no_tracks": true,
-		"worm_safe": true,
-		"blurb": "People of Vega. Fast on sand, leave no tracks, ride the sandworms.",
+		"eater_safe": true,
+		"blurb": "People of Vega. Fast on sand, leave no tracks, ride the sandeaters.",
 	},
 	"khan": {
 		"name": "King Khan",
@@ -106,6 +106,30 @@ const UNITS = {
 		"hp": 900, "radius": 21, "speed": 38, "sight": 300,
 		"range": 280, "damage": 120, "reload": 3.8, "weapon": "shell", "splash": 60, "anti_air": false,
 	},
+	# ---------------- King Khan (missions 9-10; not yet playable) ----------------
+	"khan_praetorian": {
+		"name": "Praetorian", "faction": "khan", "shape": "infantry_heavy",
+		"cost": 300, "build_time": 6.0, "tech": 4, "built_at": "barracks",
+		"hp": 260, "radius": 10, "speed": 60, "sight": 260,
+		"range": 180, "damage": 34, "reload": 1.0, "weapon": "tesla", "anti_air": true,
+	},
+	"khan_harvester": {
+		"name": "Harvester", "faction": "khan", "shape": "harvester", "harvester": true,
+		"cost": 1000, "build_time": 10.0, "tech": 4, "built_at": "factory",
+		"hp": 1100, "radius": 19, "speed": 60, "sight": 200, "capacity": 600,
+	},
+	"khan_storm_tank": {
+		"name": "Storm Tank", "faction": "khan", "shape": "tank_tesla",
+		"cost": 1600, "build_time": 13.0, "tech": 4, "built_at": "factory",
+		"hp": 1100, "radius": 19, "speed": 62, "sight": 280,
+		"range": 200, "damage": 140, "reload": 2.0, "weapon": "tesla", "anti_air": true,
+	},
+	"khan_colossus": {
+		"name": "Colossus", "faction": "khan", "shape": "tank_siege",
+		"cost": 4000, "build_time": 30.0, "tech": 4, "built_at": "factory", "super_unit": true,
+		"hp": 4000, "radius": 30, "speed": 30, "sight": 340,
+		"range": 320, "damage": 300, "reload": 4.0, "weapon": "shell", "splash": 90, "anti_air": false,
+	},
 	# ---------------- Freedom fighters (no base, appear through events) ----------------
 	"freedom_warrior": {
 		"name": "Desert Warrior", "faction": "freedom", "shape": "infantry_cloak",
@@ -133,7 +157,7 @@ const BUILDINGS = {
 		"hp": 650, "power": 100, "requires": ["hq"],
 	},
 	"refinery": {
-		"name": "Spice Refinery", "faction": "any", "shape": "refinery",
+		"name": "Uralium Refinery", "faction": "any", "shape": "refinery",
 		"cost": 1400, "build_time": 10.0, "tech": 1, "size": Vector2(3, 2),
 		"hp": 1100, "power": -30, "requires": ["power"], "free_unit": "harvester",
 	},
@@ -163,6 +187,18 @@ const BUILDINGS = {
 		"cost": 1000, "build_time": 9.0, "tech": 1, "size": Vector2(1, 1),
 		"hp": 1000, "power": -60, "requires": ["barracks"],
 		"range": 240, "damage": 130, "reload": 2.5, "weapon": "tesla", "anti_air": true,
+	},
+	"orbital_uplink": {
+		"name": "Orbital Uplink", "faction": "arthem", "shape": "uplink",
+		"cost": 2500, "build_time": 20.0, "tech": 3, "size": Vector2(2, 2),
+		"hp": 900, "power": -100, "requires": ["factory"],
+		"support_power": "orbital", "charge_time": 180.0,
+	},
+	"shield_generator": {
+		# Planned for King Khan: protects nearby buildings until knocked offline.
+		"name": "Shield Generator", "faction": "khan", "shape": "power",
+		"cost": 2000, "build_time": 18.0, "tech": 4, "size": Vector2(2, 2),
+		"hp": 1500, "power": -120, "requires": ["factory"],
 	},
 }
 

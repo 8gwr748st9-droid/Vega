@@ -43,8 +43,8 @@ func _idle(delta):
 		if frames == 900:
 			print("after ~2 min sim: player harvested %d, ai harvested %d" % [game.harvested[0], game.harvested[1]])
 			print("units: %d, buildings: %d" % [get_nodes_in_group("units").size(), get_nodes_in_group("buildings").size()])
-			_check(game.harvested[0] > 0, "player harvesters delivered spice")
-			_check(game.harvested[1] > 0, "AI harvesters delivered spice")
+			_check(game.harvested[0] > 0, "player harvesters delivered uralium")
+			_check(game.harvested[1] > 0, "AI harvesters delivered uralium")
 			_check(game.has_building(0, "barracks"), "player barracks built")
 			_check(game.team_buildings(1).size() > 4, "AI expanded its base (has %d)" % game.team_buildings(1).size())
 			# Throw armies at each other to exercise combat code.

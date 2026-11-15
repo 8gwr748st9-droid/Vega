@@ -1,6 +1,6 @@
 extends Node2D
-# Pressurised spice blooms. Anything on the ground that touches one starts a short fuse;
-# the bloom then bursts in a deadly cloud and scatters fresh spice around it.
+# Pressurised uralium blooms. Anything on the ground that touches one starts a short fuse;
+# the bloom then bursts in a deadly cloud and scatters fresh uralium around it.
 
 const TRIGGER_RADIUS = 42.0
 const BLAST_RADIUS = 170.0
@@ -47,7 +47,7 @@ func _process(delta):
 
 func _burst(b):
 	var p = b["pos"]
-	game.fx_spice_cloud(p)
+	game.fx_uralium_cloud(p)
 	game.fx_text(p + Vector2(0, -50), "KA-BOOM!", Color(1, 0.35, 0.25))
 	for e in get_tree().get_nodes_in_group("entities"):
 		if e.dead or e.is_air:
@@ -56,13 +56,13 @@ func _burst(b):
 		if d < BLAST_RADIUS:
 			e.take_damage(BLAST_DAMAGE * (1.0 - 0.6 * d / BLAST_RADIUS))
 	game.loud_noise(p, 600)
-	# Fresh spice scattered around the crater.
+	# Fresh uralium scattered around the crater.
 	var c0 = b["cell"]
 	for y in range(-3, 4):
 		for x in range(-3, 4):
 			var c = c0 + Vector2(x, y)
 			if c.distance_to(c0) <= 3.2:
-				game.map.add_spice(c, 400 + randi() % 300)
+				game.map.add_uralium(c, 400 + randi() % 300)
 
 
 func _draw():

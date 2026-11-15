@@ -84,7 +84,7 @@ func _ready():
 	var hl = Label.new()
 	hl.text = """CONTROLS
 Left-click / drag ........ select units
-Right-click .............. move / attack / harvest spice
+Right-click .............. move / attack / harvest Uralium
 Ctrl or Option + right-click .. attack-move
 Q ........ select whole army      X ........ stop
 H ........ jump to base           P ........ pause
@@ -93,8 +93,10 @@ Mouse wheel / pinch ...... zoom
 Sidebar: build structures, then click READY to place on rock.
 
 TIPS
-Sandworms hunt anything moving on sand. Rock is safe.
-Red mounds are pressurised spice - touching one sets it off."""
+Sandeaters guard their Uralium fields and swallow anything
+moving on the sand. Rock is safe. They vanish after feeding
+but always come back.
+Red mounds are pressurised Uralium - touching one sets it off."""
 	hv.add_child(hl)
 	_btn(hv, "Close", "_toggle_help")
 
@@ -181,7 +183,7 @@ func _draw():
 		for k in range(1, pts.size() - 1):
 			outline.append(pts[k])
 		draw_polyline(outline, Color("#1d130c"), 3.0)
-	# A sandworm breaching in the distance.
+	# A sandeater breaching in the distance.
 	var wx = s.x * 0.18
 	var wy = s.y * 0.6
 	var rise = 30 + sin(t * 0.8) * 10
@@ -197,7 +199,7 @@ func _draw():
 			draw_string(font, Vector2(-w / 2, 0) + o, title, Color("#1d130c"))
 		draw_string(font, Vector2(-w / 2, 0), title, Color("#f0b54a"))
 		draw_set_transform(Vector2(s.x / 2, s.y * 0.2 + 40), 0, Vector2(1.6, 1.6))
-		var sub = "The Spice Wars"
+		var sub = "The Uralium Wars"
 		var w2 = font.get_string_size(sub).x
 		draw_string(font, Vector2(-w2 / 2, 0), sub, Color("#fbeed5"))
 		draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)

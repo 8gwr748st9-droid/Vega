@@ -1,5 +1,5 @@
 extends Node2D
-# Desert wildlife. Purely cosmetic: wanders, reacts to units, explosions and worms.
+# Desert wildlife. Purely cosmetic: wanders, reacts to units, explosions and sandeaters.
 #   lizard   – scurries away fast
 #   hopper   – jumps away and burrows into the sand when frightened
 #   bird     – circles above and scatters at loud noises

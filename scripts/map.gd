@@ -1,8 +1,8 @@
 extends Node2D
-# Procedural desert map: sand, rock plateaus, spice fields and pressurised spice blooms.
-# Terrain is drawn once (cached by the renderer); spice is a separate layer redrawn when it changes.
+# Procedural desert map: sand, rock plateaus, uralium fields and pressurised uralium blooms.
+# Terrain is drawn once (cached by the renderer); uralium is a separate layer redrawn when it changes.
 
-const SpiceLayer = preload("res://scripts/spice_layer.gd")
+const UraliumLayer = preload("res://scripts/uralium_layer.gd")
 
 const CELL = 64
 const W = 64
@@ -16,11 +16,11 @@ const OUTLINE = Color("#2b1a10")
 
 var terrain = PoolIntArray()
 var shade = PoolRealArray()
-var spice = {}          # Vector2 cell -> amount
-var bloom_cells = []    # Vector2 cells holding pressurised spice
+var uralium = {}          # Vector2 cell -> amount
+var bloom_cells = []    # Vector2 cells holding pressurised uralium
 var occupied = {}       # Vector2 cell -> building
 var bases = []          # base centre cells (index = start slot)
-var spice_layer
+var uralium_layer
 var rng = RandomNumberGenerator.new()
 
 
@@ -35,10 +35,10 @@ func generate(seed_value):
 	n_rock.period = 14.0
 	n_rock.persistence = 0.5
 
-	var n_spice = OpenSimplexNoise.new()
-	n_spice.seed = seed_value + 17
-	n_spice.octaves = 2
-	n_spice.period = 8.0
+	var n_uralium = OpenSimplexNoise.new()
+	n_uralium.seed = seed_value + 17
+	n_uralium.octaves = 2
+	n_uralium.period = 8.0
 
 	var n_dune = OpenSimplexNoise.new()
 	n_dune.seed = seed_value + 99
@@ -65,15 +65,15 @@ func generate(seed_value):
 				if d < 7.0 + jitter:
 					terrain[y * W + x] = ROCK
 
-	# Spice fields on open sand.
+	# Uralium fields on open sand.
 	for y in range(H):
 		for x in range(W):
 			var c = Vector2(x, y)
 			if terrain[y * W + x] != SAND or _near_base(c, 8.0):
 				continue
-			var s = n_spice.get_noise_2d(x, y)
+			var s = n_uralium.get_noise_2d(x, y)
 			if s > 0.22:
-				spice[c] = int(200 + s * 900)
+				uralium[c] = int(200 + s * 900)
 
 	# A guaranteed field near each base, towards the map centre.
 	var centre = Vector2(W / 2, H / 2)
@@ -81,12 +81,12 @@ func generate(seed_value):
 		var field = b + (centre - b).normalized() * 12.0
 		_paint_field(field.round(), 4.0, 550)
 
-	# Pressurised spice blooms.
+	# Pressurised uralium blooms.
 	var tries = 0
 	while bloom_cells.size() < 12 and tries < 2000:
 		tries += 1
 		var c = Vector2(rng.randi_range(3, W - 4), rng.randi_range(3, H - 4))
-		if get_type(c) != SAND or _near_base(c, 16.0) or spice.has(c):
+		if get_type(c) != SAND or _near_base(c, 16.0) or uralium.has(c):
 			continue
 		var too_close = false
 		for o in bloom_cells:
@@ -96,9 +96,9 @@ func generate(seed_value):
 		if not too_close:
 			bloom_cells.append(c)
 
-	spice_layer = SpiceLayer.new()
-	spice_layer.map = self
-	add_child(spice_layer)
+	uralium_layer = UraliumLayer.new()
+	uralium_layer.map = self
+	add_child(uralium_layer)
 	update()
 
 
@@ -118,7 +118,7 @@ func _paint_field(centre, r, amount):
 			if _near_base(c, 7.5):
 				continue
 			terrain[y * W + x] = SAND
-			spice[c] = amount + rng.randi_range(-80, 120)
+			uralium[c] = amount + rng.randi_range(-80, 120)
 
 
 # ---------------------------------------------------------------- queries
@@ -153,32 +153,32 @@ func is_rock_at(p):
 	return get_type(cell_of(p)) == ROCK
 
 
-func spice_at(c):
-	return spice.get(c, 0)
+func uralium_at(c):
+	return uralium.get(c, 0)
 
 
-func take_spice(c, amount):
-	if not spice.has(c):
+func take_uralium(c, amount):
+	if not uralium.has(c):
 		return 0
-	var taken = min(amount, spice[c])
-	spice[c] -= taken
-	if spice[c] <= 0.5:
-		spice.erase(c)
-	spice_layer.mark_dirty()
+	var taken = min(amount, uralium[c])
+	uralium[c] -= taken
+	if uralium[c] <= 0.5:
+		uralium.erase(c)
+	uralium_layer.mark_dirty()
 	return taken
 
 
-func add_spice(c, amount):
+func add_uralium(c, amount):
 	if get_type(c) != SAND:
 		return
-	spice[c] = spice.get(c, 0) + amount
-	spice_layer.mark_dirty()
+	uralium[c] = uralium.get(c, 0) + amount
+	uralium_layer.mark_dirty()
 
 
-func find_spice(near_pos, exclude = []):
+func find_uralium(near_pos, exclude = []):
 	var best = null
 	var best_d = INF
-	for c in spice.keys():
+	for c in uralium.keys():
 		if c in exclude:
 			continue
 		var d = center_of(c).distance_squared_to(near_pos)
@@ -253,7 +253,7 @@ func make_minimap_image(size):
 		for px in range(size):
 			var c = Vector2(floor(px * W / float(size)), floor(py * H / float(size)))
 			var col = SAND_COLORS[1] if get_type(c) == SAND else ROCK_COLORS[0]
-			if spice.has(c):
+			if uralium.has(c):
 				col = Color("#b8382c")
 			img.set_pixel(px, py, col)
 	img.unlock()

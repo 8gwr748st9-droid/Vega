@@ -1,19 +1,21 @@
 # Vega
 
-A 2D real-time strategy game for macOS set on the desert planet Vega. You harvest red spice and build a
-base, while sandworms hunt on the open sand. The aim is to free the planet from King Khan.
+A 2D real-time strategy game for macOS set on the desert planet Vega. You harvest Uralium, the red metal
+that fuels Khan's weapons, while sandeaters guard their feeding grounds. The aim is to free the planet from King Khan.
 
 See [docs/DESIGN.md](docs/DESIGN.md) for the story, factions and roadmap.
 
 ## What's in the prototype
 
 - Main menu, skirmish (play as Arthems or Klingos) and Campaign Mission 1 "Landfall" with in-engine cutscenes
-- Procedural desert map with rock plateaus, spice fields and explosive spice blooms
+- Procedural desert map with rock plateaus, Uralium fields and explosive Uralium blooms
 - Base building in a sidebar, like Red Alert 2: power, refinery, barracks, war factory, helipad and defences
 - Harvesters, infantry, vehicles, a drone, a gunship, Tesla weapons and missiles
-- Sandworms, desert wildlife, dust clouds and vehicle tracks
+- Sandeaters that guard Uralium fields, swallow intruders, vanish and return later
+- Arthem Orbital Uplink: an unstable test-phase vaporiser that drifts off target and makes enemies flee
+- Desert wildlife, dust clouds and vehicle tracks
 - A computer opponent with three difficulty levels
-- Freedom Fighter worm-rider raids in skirmish
+- Freedom Fighter raids in skirmish, riding sandeaters that leave harvestable lines of Uralium
 - Placeholder comic-style graphics drawn in code, with no image files yet
 
 ## Running it on a Mac (High Sierra 10.13.6 or newer)
@@ -55,7 +57,7 @@ scripts/data.gd      All unit / building / faction stats (balance here)
 scripts/missions.gd  Campaign missions and cutscene dialogue
 scripts/game.gd      Match logic: economy, power, input, win/lose
 scripts/ai.gd        Computer opponent
-scripts/...          Units, buildings, map, worms, wildlife, HUD, cutscenes
+scripts/...          Units, buildings, map, sandeaters, orbital strike, wildlife, HUD, cutscenes
 tests/smoke_test.gd  Headless test that simulates a few minutes of play
 docs/DESIGN.md       Game design document
 ```

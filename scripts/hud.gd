@@ -18,6 +18,7 @@ var struct_grid
 var unit_grid
 var struct_buttons = {}
 var unit_buttons = {}
+var orbital_button
 var refresh = 0.0
 var paused_label
 var game_over_panel
@@ -102,6 +103,12 @@ func _ready():
 		unit_grid.add_child(b2)
 		unit_buttons[k] = b2
 
+	orbital_button = _make_button()
+	orbital_button.rect_min_size = Vector2(SIDEBAR_W - 34, 44)
+	orbital_button.visible = false
+	orbital_button.connect("pressed", self, "_on_orbital_pressed")
+	lists.add_child(orbital_button)
+
 	message_label = Label.new()
 	message_label.margin_left = 16
 	message_label.margin_top = 12
@@ -153,6 +160,13 @@ func _on_struct_pressed(kind):
 	_refresh()
 
 
+func _on_orbital_pressed():
+	if game.orbital_ready(game.player_team):
+		game.targeting = "orbital"
+		game.placing = ""
+		show_message("Pick a target. Test-phase beam: it WILL drift off target.")
+
+
 func _on_unit_pressed(kind):
 	game.queue_unit(game.player_team, kind)
 	_refresh()
@@ -188,7 +202,7 @@ func _unhandled_key_input(event):
 
 func _refresh():
 	var t = game.player_team
-	credits_label.text = "SPICE  %d" % int(game.credits[t])
+	credits_label.text = "URALIUM  %d" % int(game.credits[t])
 	var ok = game.has_power(t)
 	power_label.text = "POWER  %d / %d%s" % [game.power_used[t], game.power_made[t], "" if ok else "   LOW!"]
 	power_label.add_color_override("font_color", Color(0.5, 1, 0.5) if ok else Color(1, 0.4, 0.3))
@@ -210,6 +224,18 @@ func _refresh():
 		b2.text = "%s\n$%d%s" % [d2["name"], d2["cost"], ("   x%d" % q) if q > 0 else ""]
 		b2.disabled = game.producers_for(t, k).empty()
 		b2.hint_tooltip = "Built at: %s" % Data.get_def(d2["built_at"])["name"]
+
+	var has_uplink = game.has_building(t, "orbital_uplink")
+	orbital_button.visible = has_uplink
+	if has_uplink:
+		var pct = int(100 * game.orbital_charge[t] / game.orbital_time())
+		if game.targeting == "orbital":
+			orbital_button.text = "ORBITAL STRIKE\nchoose target..."
+		elif pct >= 100:
+			orbital_button.text = "ORBITAL STRIKE\nREADY"
+		else:
+			orbital_button.text = "ORBITAL STRIKE\ncharging %d%%" % pct
+		orbital_button.disabled = pct < 100
 
 	var sel = []
 	for s in game.selected:

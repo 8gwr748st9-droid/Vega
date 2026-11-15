@@ -62,7 +62,7 @@ func _process(delta):
 			game.spawn_unit(k, team, exit_point(), self)
 	if def.get("defense", false):
 		_defend(delta)
-	if def["shape"] in ["power", "tesla_coil", "refinery", "helipad"] or flash > 0 or queue.size() > 0:
+	if def["shape"] in ["power", "tesla_coil", "refinery", "helipad", "uplink"] or flash > 0 or queue.size() > 0:
 		update()
 
 
@@ -147,6 +147,13 @@ func _draw():
 			var dir = Vector2.RIGHT.rotated((target.global_position - global_position).angle()) if is_instance_valid(target) else Vector2.DOWN
 			draw_line(Vector2.ZERO, dir * 28, INK, 7.0)
 			draw_outlined_circle(Vector2.ZERO, 11, c, 3.0)
+		"uplink":
+			draw_outlined_poly(rect_points(Vector2(0, 20), Vector2(60, 30)), d)
+			var aim = Vector2.RIGHT.rotated(-PI / 2 + sin(anim * 0.4) * 0.6)
+			draw_line(Vector2(0, 10), aim * 30, INK, 6.0)
+			draw_outlined_poly([aim * 30 + aim.tangent() * 28, aim * 44, aim * 30 - aim.tangent() * 28, aim * 22], c)
+			var charge = game.orbital_charge[team] / def["charge_time"]
+			draw_arc(Vector2(0, 20), 12, -PI / 2, -PI / 2 + TAU * charge, 20, Color(0.55, 0.9, 1.0), 4.0)
 		"tesla_coil":
 			draw_outlined_poly([Vector2(-18, 24), Vector2(18, 24), Vector2(8, -20), Vector2(-8, -20)], d)
 			for k in range(4):

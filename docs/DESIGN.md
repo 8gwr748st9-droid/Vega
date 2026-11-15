@@ -5,8 +5,8 @@
 ## 1. Pitch
 
 A modern, approachable real-time strategy game (in the spirit of late-90s/early-2000s classics such as
-Red Alert 2) set on **Vega**, a desert planet ruled by the tyrant **King Khan**. Red spice lies across the
-sand; whoever controls it controls Vega. You play the **Prince of Arthem**, who comes to overthrow Khan,
+Red Alert 2) set on **Vega**, a desert planet ruled by the tyrant **King Khan**. **Uralium**, a red metal used for weapons and fuel, lies in veins across the sand. It is essential to
+holding Khan's kingdom; whoever controls it controls Vega. You play the **Prince of Arthem**, who comes to overthrow Khan,
 uncovers a secret about his own bloodline, and finally frees the planet's hoarded water so the desert can
 bloom again.
 
@@ -20,12 +20,12 @@ bloom again.
 
 | Element | Description |
 |---|---|
-| **Spice** | Red grains lying on the sand. Harvested and refined into credits. |
-| **Spice blooms** | Pockets of spice packed under high pressure. If anything touches one, it bursts into a deadly red cloud that kills everything close by, then leaves a rich new spice field. |
-| **Sandworms** | Giant worms that hunt vibration on open sand. Rock is safe. They cannot be killed. Freedom Fighters can ride them. |
+| **Uralium** | A red metal lying in veins on the sand. Used for weapon production and fuel, and essential to keeping control of Khan's kingdom. Harvested and refined into credits. |
+| **Uralium blooms** | Pockets of Uralium packed under high pressure. If anything touches one, it bursts into a deadly red cloud that kills everything close by, then leaves a rich new Uralium field. |
+| **Sandeaters** | Huge creatures living under the sand. They mainly eat Uralium and fiercely protect their feeding grounds. Anything they eat (a person, a car, a harvester) is lost, and the sandeater itself then disappears and comes back later. Rock is safe; they cannot be killed. Freedom Fighters ride them by making them believe they are mating, and a ridden sandeater leaves lines of Uralium on the sand that can be harvested. |
 | **Rock plateaus** | The only ground solid enough to build on. |
 | **Water** | Khan hoards the planet's water. Releasing it is the campaign's final goal. |
-| **Wildlife** | Lizards, sand hoppers and birds. Purely cosmetic: they flee units, scatter at explosions, burrow from worms. |
+| **Wildlife** | Lizards, sand hoppers and birds. Purely cosmetic: they flee units, scatter at explosions, burrow when sandeaters pass. |
 | **Weather** | Drifting dust clouds. It never rains. |
 
 ## 3. Factions
@@ -33,8 +33,9 @@ bloom again.
 ### Arthems (player faction in the campaign)
 Highly adaptable. They hate King Khan and are strong enough to challenge him.
 - **Style:** helicopters, drones, stealth, explosives; very strong defences and base.
-- **Experimental tech:** an orbital weapon that vaporises structures or armoured vehicles from space,
-  but it is highly unstable (misfires, long charge, can hit near the aim point). **(TBD: misfire rules)**
+- **Experimental tech:** an orbital vaporiser that destroys structures or armoured vehicles from space.
+  It is unstable and still in its test phase: it always lands somewhat off target, but it fills the
+  enemy with fear, and nearby enemy units panic and flee.
 - **Units (prototype):** Ranger (infantry), Dune Buggy, Harvester, Strike Drone, Gunship
 - **Defence:** Gun Tower
 
@@ -46,12 +47,13 @@ Rootless warriors with very high firepower.
 - **Secret:** they use stem-cell technology to live for centuries.
 - **Units (prototype):** Heavy Trooper, Rocketeer, Harvester, Tesla Tank, Siege Crawler
 - **Defence:** Tesla Coil
-- **Planned:** Air-strike support power (charge timer + spice cost)
+- **Planned:** Air-strike support power (charge timer + Uralium cost)
 
 ### Freedom Fighters (the people of Vega)
 They only want to be free of the King. They hate the Klingos.
 - **No base.** They appear through story events and raids.
-- **Fast on sand, leave no tracks, never attract sandworms**, and can **ride sandworms** to move quickly.
+- **Fast on sand, leave no tracks, ignored by sandeaters**, and can **ride sandeaters** to move quickly
+  (they trick them into thinking they are mating; the ride leaves harvestable lines of Uralium).
 - Simple weapons and improvised explosive devices.
 - **Hijackers:** specialists who can steal enemy vehicles (max 2 alive at a time).
 - **Missions 9–10:** they have captured almost all of Khan's technology and use it in surprise
@@ -59,45 +61,46 @@ They only want to be free of the King. They hate the Klingos.
 - **Theme:** will the Arthems free Vega, or just replace one ruler with another?
 
 ### King Khan (missions 9–10 only)
-Ruthless. The best technology on Vega. **(TBD: unit roster; proposal: upgraded versions of all Klingos tech
-plus unique super-units and a shield generator.)**
+Ruthless. The best technology on Vega: upgraded Klingos technology, a shield generator and super-units.
+- **Units (defined, not yet playable):** Praetorian (elite Tesla infantry), Storm Tank (fast Tesla tank that can hit air),
+  Colossus (super-unit siege walker), Harvester
+- **Buildings:** Shield Generator (protects nearby buildings until knocked offline)
 
 ## 4. Story outline — "The Liberation of Vega"
 
-Character names are **placeholders (TBD)**: Prince *Arion*, Commander *Sela* (Arthem advisor),
+Character names (approved): Prince *Arion*, Commander *Sela* (Arthem advisor),
 Emissary *Vorg* (Klingos), *Nadir* (Freedom Fighter leader).
 
 | # | Mission | Story beat | New elements |
 |---|---|---|---|
-| 1 | **Landfall** | Arthems land on Vega, build a foothold, destroy a Klingos outpost. | Base building, harvesting, sandworms, spice blooms |
-| 2 | **Red Sands** | Hold three spice fields against Klingos raids. | Using blooms as traps |
-| 3 | **Riders of the Deep** | First contact with the Freedom Fighters; escort their scouts. | Freedom Fighters, worm riding |
+| 1 | **Landfall** | Arthems land on Vega, build a foothold, destroy a Klingos outpost. | Base building, harvesting, sandeaters, Uralium blooms |
+| 2 | **Red Sands** | Hold three Uralium fields against Klingos raids. | Using blooms as traps |
+| 3 | **Riders of the Deep** | First contact with the Freedom Fighters; escort their scouts. | Freedom Fighters, sandeater riding |
 | 4 | **Shadows over Vega** | Destroy a Klingos relay tower undetected. | Helipad, Gunship, stealth |
 | 5 | **Broken Trust** | Freedom Fighters doubt Arthem's motives; rescue their hijackers. | Hijackers (max 2), trust theme |
 | 6 | **The Tesla Wall** | Break a fortified line of Tesla coils. | Strike Drones, explosives |
 | 7 | **The King of Klingos** | Siege the Klingos citadel; the Prince kills the King of Klingos. | Siege tactics, hero unit **(TBD)** |
 | 8 | **Blood of the Ancients** | Revelation: the King of Klingos was the Prince's great-great-grandfather (stem-cell longevity). Capture the labs. | Arthems gain Klingos technology |
-| 9 | **Wrath of Khan** | King Khan takes the field. Survive his onslaught. | Khan faction, unstable orbital vaporiser |
-| 10 | **The Waters of Vega** | All hope seems lost, then the Freedom Fighters strike and Khan's tech goes **offline for 15 minutes**. Take his palace. | 15-minute timer, Freedom Fighter allies |
+| 9 | **Wrath of Khan** | King Khan takes the field. Survive his onslaught. At the end, when all hope seems lost, the Freedom Fighters strike with Khan's stolen technology and knock his systems offline. | Khan faction, unstable orbital vaporiser, Freedom Fighter strike |
+| 10 | **The Waters of Vega** | Khan's technology is **offline for 15 minutes**. That window is all the Arthems have to take his palace. | 15-minute timer, Freedom Fighter allies |
 
 **Ending:** the Arthems rule and Vega is free. The Prince releases the water Khan held back; the planet
 turns green and the deserts disappear (final in-engine cutscene: sand transitions to grass and water).
 
-**Open question:** in which mission does the Freedom Fighter strike happen: the end of 9 or the start of 10?
-The current plan puts it at the start of 10.
+**Decided:** the Freedom Fighter strike ends mission 9; mission 10 is the 15-minute window.
 
 ## 5. Gameplay systems
 
 | System | Design |
 |---|---|
-| **Economy** | Harvesters collect spice → Refinery → credits. Refinery comes with a free Harvester. |
+| **Economy** | Harvesters collect Uralium → Refinery → credits. Refinery comes with a free Harvester. |
 | **Power** | Power Plants supply power; most buildings consume it. Low power = production at 50%, defences offline. |
 | **Construction** | RA2-style: build in the sidebar, then click READY and place on rock near your base. |
-| **Tech progression** | Unlocked by campaign progress (tech level per mission). Some upgrades cost spice, others need power. Skirmish uses full tech. |
+| **Tech progression** | Unlocked by campaign progress (tech level per mission). Some upgrades cost Uralium, others need power. Skirmish uses full tech. |
 | **Terrain** | Sand vs rock. Klingos slow on sand; Freedom Fighters fast on sand. Only rock is buildable. Vehicles leave tracks on sand. |
-| **Sandworms** | Hunt moving units on sand (harvesters most of all); swallow everything on sand near where they surface. |
-| **Spice blooms** | Touch → 1.4 s fuse → deadly blast (ground only) → new spice field. |
-| **Support powers** | *(planned)* Klingos air strike, Arthem orbital vaporiser (unstable), Freedom Fighter worm strike. |
+| **Sandeaters** | Each guards a Uralium feeding ground and slowly eats it. Hunts moving units on sand in its territory (harvesters first). Swallowed units are lost; the sandeater then vanishes for 1.5–2.5 minutes and resurfaces in its territory. |
+| **Uralium blooms** | Touch → 1.4 s fuse → deadly blast (ground only) → new Uralium field. |
+| **Support powers** | **Arthem orbital vaporiser** (done in the prototype): Orbital Uplink building, 3-minute charge that needs power; the beam drifts 50–170 px off target (test phase); vaporises vehicles and structures, wounds infantry; every enemy unit within ~550 px panics and flees for 8 s. *(Planned)* Klingos air strike, Freedom Fighter sandeater strike. |
 
 ## 6. Art direction
 
@@ -110,7 +113,7 @@ The current plan puts it at the start of 10.
 
 ## 7. Roadmap
 
-1. **Prototype (this commit):** skirmish + mission 1, economy, power, combat, worms, blooms, wildlife, dust, cutscenes, AI.
+1. **Prototype (this commit):** skirmish + mission 1, economy, power, combat, sandeaters, blooms, orbital strike, wildlife, dust, cutscenes, AI.
 2. Support powers, hijackers, Klingos air strike, fog of war, control groups, sound effects.
 3. Missions 2–5 with scripted events.
 4. Real art pass (sprites, portraits), music.

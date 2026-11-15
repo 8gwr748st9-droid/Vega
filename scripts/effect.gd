@@ -50,7 +50,7 @@ func _draw():
 			draw_circle(b - position, 10 * (1 - t), Color(0.7, 0.9, 1.0, 0.8))
 		"puff":
 			draw_circle(Vector2.ZERO, 3 + 6 * t, Color(0.85, 0.8, 0.7, 0.5 * (1 - t)))
-		"spice_cloud":
+		"uralium_cloud":
 			for k in range(9):
 				var dir = Vector2.RIGHT.rotated(k * TAU / 9 + k)
 				draw_circle(dir * 70 * size * (0.4 + t), 50 * size * (0.6 + t * 0.6), Color(0.78, 0.16, 0.1, 0.45 * (1 - t)))

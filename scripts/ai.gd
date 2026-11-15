@@ -9,7 +9,7 @@ var wave = 0
 var first_attack = 240.0
 var defending = 0.0
 
-var build_order = ["power", "barracks", "power", "factory", "DEFENSE", "power", "refinery", "refinery", "DEFENSE", "power", "helipad", "DEFENSE", "power"]
+var build_order = ["power", "barracks", "power", "factory", "DEFENSE", "power", "refinery", "refinery", "DEFENSE", "power", "helipad", "DEFENSE", "power", "orbital_uplink", "power"]
 
 
 func setup(g, t):
@@ -36,6 +36,17 @@ func _process(delta):
 	_manage_structures()
 	_manage_harvesters()
 	_manage_army()
+	_use_orbital()
+
+
+func _use_orbital():
+	if not game.orbital_ready(team):
+		return
+	var targets = game.team_buildings(game.player_team)
+	if targets.empty():
+		return
+	var tgt = targets[randi() % targets.size()]
+	game.fire_orbital(team, tgt.position)
 
 
 func _manage_structures():

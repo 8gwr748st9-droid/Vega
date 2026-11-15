@@ -4,7 +4,7 @@ extends Control
 var game
 var tex
 var redraw = 0.0
-var spice_refresh = 0.0
+var uralium_refresh = 0.0
 
 
 func _ready():
@@ -19,9 +19,9 @@ func _rebuild_texture():
 
 func _process(delta):
 	redraw -= delta
-	spice_refresh -= delta
-	if spice_refresh <= 0:
-		spice_refresh = 10.0
+	uralium_refresh -= delta
+	if uralium_refresh <= 0:
+		uralium_refresh = 10.0
 		_rebuild_texture()
 	if redraw <= 0:
 		redraw = 0.25

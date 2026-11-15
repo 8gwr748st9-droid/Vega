@@ -1,5 +1,5 @@
 extends "res://scripts/unit.gd"
-# Harvester: finds spice, fills up, returns to the nearest refinery, unloads, repeats.
+# Harvester: finds uralium, fills up, returns to the nearest refinery, unloads, repeats.
 
 const HARVEST_RATE = 55.0
 const UNLOAD_RATE = 180.0
@@ -10,12 +10,12 @@ var auto = true
 
 
 func order_move(p):
-	# Right-clicking spice sends the harvester to work there.
+	# Right-clicking uralium sends the harvester to work there.
 	var c = game.map.cell_of(p)
-	if game.map.spice_at(c) > 0:
+	if game.map.uralium_at(c) > 0:
 		harvest_cell = c
 		auto = true
-		state = "to_spice"
+		state = "to_uralium"
 		return
 	auto = false
 	.order_move(p)
@@ -27,7 +27,7 @@ func order_stop():
 
 func start_harvesting():
 	auto = true
-	state = "to_spice"
+	state = "to_uralium"
 	harvest_cell = null
 
 
@@ -35,13 +35,13 @@ func _update_state(delta):
 	match state:
 		"idle":
 			if auto:
-				state = "to_spice"
+				state = "to_uralium"
 		"move":
 			if _step_to(dest, delta, true):
 				state = "idle"
 				guard_pos = position
-		"to_spice":
-			_seek_spice(delta)
+		"to_uralium":
+			_seek_uralium(delta)
 		"harvesting":
 			_harvest(delta)
 		"returning":
@@ -52,14 +52,14 @@ func _update_state(delta):
 			state = "idle"
 
 
-func _seek_spice(delta):
+func _seek_uralium(delta):
 	if cargo >= def["capacity"]:
 		state = "returning"
 		return
-	if harvest_cell == null or game.map.spice_at(harvest_cell) <= 0:
-		harvest_cell = game.map.find_spice(position, _claimed_cells())
+	if harvest_cell == null or game.map.uralium_at(harvest_cell) <= 0:
+		harvest_cell = game.map.find_uralium(position, _claimed_cells())
 		if harvest_cell == null:
-			harvest_cell = game.map.find_spice(position)
+			harvest_cell = game.map.find_uralium(position)
 		if harvest_cell == null:
 			if cargo > 0:
 				state = "returning"
@@ -80,11 +80,11 @@ func _claimed_cells():
 
 
 func _harvest(delta):
-	if harvest_cell == null or game.map.spice_at(harvest_cell) <= 0:
-		state = "to_spice"
+	if harvest_cell == null or game.map.uralium_at(harvest_cell) <= 0:
+		state = "to_uralium"
 		harvest_cell = null
 		return
-	var got = game.map.take_spice(harvest_cell, HARVEST_RATE * delta)
+	var got = game.map.take_uralium(harvest_cell, HARVEST_RATE * delta)
 	cargo += got
 	moving = true   # animate the scoop dust
 	if cargo >= def["capacity"]:
@@ -112,4 +112,4 @@ func _unload(delta):
 	game.add_credits(team, amount)
 	if cargo <= 0.01:
 		cargo = 0
-		state = "to_spice"
+		state = "to_uralium"

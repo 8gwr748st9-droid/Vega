@@ -12,6 +12,8 @@ var track_acc = 0.0
 var stuck = 0.0
 var last_d = INF
 var cargo = 0.0            # used by harvesters for drawing
+var panic_time = 0.0       # fleeing in terror (e.g. from the orbital vaporiser)
+var panic_from = Vector2()
 
 
 func _ready():
@@ -69,7 +71,14 @@ func _process(delta):
 	_tick_common(delta)
 	anim += delta
 	moving = false
-	_update_state(delta)
+	if panic_time > 0:
+		panic_time -= delta
+		target = null
+		_step_to(position + (position - panic_from).normalized() * 80, delta)
+		if panic_time <= 0:
+			order_stop()
+	else:
+		_update_state(delta)
 	if not is_air:
 		_separate(delta)
 	update()
@@ -135,6 +144,13 @@ func _aim_and_fire(t):
 	turret_angle = (t.global_position - global_position).angle()
 	if reload_left <= 0:
 		fire_at(t)
+
+
+func panic(from_pos, duration):
+	panic_time = duration
+	panic_from = from_pos
+	if randf() < 0.3:
+		game.fx_text(position + Vector2(0, -26), ["AAAH!", "RUN!", "RETREAT!"][randi() % 3], Color(1, 1, 1))
 
 
 func speed_mult():
@@ -246,6 +262,8 @@ func _draw():
 			draw_outlined_circle(Vector2.ZERO, radius, body)
 	draw_set_transform(Vector2.ZERO, 0, Vector2.ONE)
 	draw_health(radius * 2.4, -radius - 14 + lift.y)
+	if panic_time > 0 and int(anim * 6) % 2 == 0:
+		draw_string(game.font, Vector2(-3, -radius - 18 + lift.y), "!", Color(1, 0.9, 0.2))
 
 
 func _draw_infantry(shape, body):
@@ -280,7 +298,7 @@ func _draw_harvester(body):
 	draw_rect(Rect2(Vector2(-20, 10), Vector2(40, 6)), INK)
 	draw_outlined_poly(rect_points(Vector2.ZERO, Vector2(36, 24)), Color("#c8b28a"))
 	draw_outlined_poly([Vector2(18, -12), Vector2(28, -15), Vector2(28, 15), Vector2(18, 12)], Color("#7d7d7d"))
-	# Spice hopper shows the load.
+	# Uralium hopper shows the load.
 	draw_rect(Rect2(Vector2(-14, -8), Vector2(20, 16)), INK)
 	var fill = clamp(cargo / max(1.0, def.get("capacity", 500)), 0, 1)
 	draw_rect(Rect2(Vector2(-13, -7), Vector2(18 * fill, 14)), Color("#c0392b"))

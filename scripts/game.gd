@@ -9,7 +9,8 @@ const ProjectileScript = preload("res://scripts/projectile.gd")
 const EffectScript = preload("res://scripts/effect.gd")
 const TracksScript = preload("res://scripts/tracks.gd")
 const BloomsScript = preload("res://scripts/blooms.gd")
-const WormScript = preload("res://scripts/worm.gd")
+const SandeaterScript = preload("res://scripts/sandeater.gd")
+const OrbitalScript = preload("res://scripts/orbital.gd")
 const CritterScript = preload("res://scripts/critter.gd")
 const DustScript = preload("res://scripts/dust.gd")
 const OverlayScript = preload("res://scripts/overlay.gd")
@@ -60,7 +61,10 @@ var rules_timer = 0.0
 var dust_timer = 8.0
 var raid_timer = 300.0
 var attack_notice = 0.0
-var worm_notice = 0.0
+var eater_notice = 0.0
+var orbital_charge = [0.0, 0.0, 0.0]   # seconds charged on the Orbital Uplink
+var targeting = ""                     # "orbital" while the player picks a strike target
+var sandeaters
 var power_warned = false
 var outro_playing = false
 
@@ -93,10 +97,10 @@ func _ready():
 	add_child(blooms)
 	blooms.setup(self)
 
-	var worms = Node2D.new()
-	worms.name = "Worms"
-	worms.z_index = -7
-	add_child(worms)
+	sandeaters = Node2D.new()
+	sandeaters.name = "Sandeaters"
+	sandeaters.z_index = -7
+	add_child(sandeaters)
 
 	world = YSort.new()
 	world.name = "World"
@@ -130,10 +134,11 @@ func _ready():
 
 	_spawn_start()
 
-	for i in range(2):
-		var w = WormScript.new()
-		w.setup(self, _random_sand_pos(20))
-		worms.add_child(w)
+	# Each sandeater guards a Uralium feeding ground away from the bases.
+	for i in range(3):
+		var w = SandeaterScript.new()
+		w.setup(self, _feeding_ground())
+		sandeaters.add_child(w)
 	for i in range(26):
 		var c = CritterScript.new()
 		var k = ["lizard", "hopper", "hopper", "lizard", "bird"][i % 5]
@@ -185,6 +190,15 @@ func _spawn_start():
 				break
 		if f == "arthem":
 			spawn_unit("arthem_scout", t, front + Vector2(0, 40))
+
+
+func _feeding_ground():
+	var cells = map.uralium.keys()
+	cells.shuffle()
+	for c in cells:
+		if not map._near_base(c, 18):
+			return map.center_of(c)
+	return _random_sand_pos(20)
 
 
 func _random_sand_pos(min_base_dist):
@@ -279,8 +293,8 @@ func fx_puff(pos):
 	_fx("puff", pos, 0.5)
 
 
-func fx_spice_cloud(pos):
-	var e = _fx("spice_cloud", pos, 3.0)
+func fx_uralium_cloud(pos):
+	var e = _fx("uralium_cloud", pos, 3.0)
 	e.size = 1.2
 	fx_explosion(pos, 2.2)
 
@@ -419,7 +433,7 @@ func queue_unit(team, kind):
 		return false
 	if credits[team] < d["cost"]:
 		if team == player_team:
-			notify("Not enough spice.")
+			notify("Not enough Uralium.")
 		return false
 	credits[team] -= d["cost"]
 	var best = producers[0]
@@ -439,7 +453,7 @@ func start_structure(team, kind):
 		return false
 	if credits[team] < d["cost"]:
 		if team == player_team:
-			notify("Not enough spice.")
+			notify("Not enough Uralium.")
 		return false
 	credits[team] -= d["cost"]
 	sb["kind"] = kind
@@ -514,11 +528,26 @@ func on_damaged(e, attacker):
 			e.target = attacker
 
 
-func on_wormsign(prey):
-	if prey.team == player_team and worm_notice <= 0:
-		worm_notice = 20.0
-		notify("Wormsign! Get off the sand!")
+func on_sandeater_alert(prey):
+	if prey.team == player_team and eater_notice <= 0:
+		eater_notice = 20.0
+		notify("Sandeater! Get off the sand!")
 		fx_text(prey.position + Vector2(0, -40), "RUMBLE...", Color(0.95, 0.75, 0.4))
+
+
+func on_sandeater_returned(eater):
+	fx_text(eater.position + Vector2(0, -40), "SHHHRRR...", Color(0.95, 0.75, 0.4))
+
+
+func swallow_unit(u):
+	# Eaten units are lost for good (no wreck, no explosion).
+	if u.dead:
+		return
+	if u.team == player_team:
+		notify("A sandeater swallowed our %s!" % u.def["name"])
+	selected.erase(u)
+	u.dead = true
+	u.queue_free()
 
 
 func on_entity_died(e):
@@ -538,7 +567,7 @@ func on_entity_died(e):
 func _process(delta):
 	elapsed += delta
 	attack_notice -= delta
-	worm_notice -= delta
+	eater_notice -= delta
 	for t in range(3):
 		if offline[t] > 0:
 			offline[t] -= delta
@@ -548,6 +577,7 @@ func _process(delta):
 	if power_timer <= 0:
 		power_timer = 0.5
 		_recompute_power()
+		_charge_orbital(0.5)
 		if not has_power(player_team) and not power_warned:
 			power_warned = true
 			notify("Low power! Build more Power Plants.")
@@ -604,13 +634,46 @@ func _freedom_raid():
 		if map.is_sand_at(spot):
 			break
 		spot += dir.rotated(rand_range(-1, 1)) * 64
-	fx_text(spot + Vector2(0, -60), "WORM RIDERS!", Color(1, 0.85, 0.3))
-	fx_explosion(spot, 1.2)
-	for i in range(5):
-		var k = "freedom_warrior"
-		var u = spawn_unit(k, freedom_team, spot + Vector2(rand_range(-50, 50), rand_range(-50, 50)))
-		u.order_attack_move(hq.position)
+	# They arrive riding a sandeater from the map edge, leaving lines of Uralium behind.
+	var start = map.clamp_to_map(spot - dir * 1400 + dir.tangent() * rand_range(-400, 400))
+	var ride = SandeaterScript.new()
+	ride.setup_ridden(self, start, spot, 5, hq.position)
+	sandeaters.add_child(ride)
 	notify("The Freedom Fighters strike the %s!" % Data.FACTIONS[team_faction[victim]]["name"])
+
+
+# ---------------------------------------------------------------- orbital vaporiser (Arthem, test phase)
+
+func orbital_time():
+	return Data.BUILDINGS["orbital_uplink"]["charge_time"]
+
+
+func _charge_orbital(dt):
+	for t in range(2):
+		if has_building(t, "orbital_uplink"):
+			if has_power(t):
+				var was = orbital_charge[t]
+				orbital_charge[t] = min(orbital_time(), orbital_charge[t] + dt)
+				if t == player_team and was < orbital_time() and orbital_charge[t] >= orbital_time():
+					notify("Orbital vaporiser charged. Warning: still in test phase.")
+		else:
+			orbital_charge[t] = 0.0
+
+
+func orbital_ready(team):
+	return orbital_charge[team] >= orbital_time()
+
+
+func fire_orbital(team, pos):
+	if not orbital_ready(team):
+		return false
+	orbital_charge[team] = 0.0
+	var o = OrbitalScript.new()
+	o.setup(self, team, pos)
+	fx_layer.add_child(o)
+	if team != player_team:
+		notify("Enemy orbital strike incoming!")
+	return true
 
 
 func _check_rules():
@@ -622,7 +685,7 @@ func _check_rules():
 	var enemy_dead = team_buildings(enemy_team).empty()
 	if mission != null:
 		hud.set_objectives(_objective_text())
-		if enemy_dead and harvested[player_team] >= mission.get("spice_goal", 0):
+		if enemy_dead and harvested[player_team] >= mission.get("uralium_goal", 0):
 			_end(true)
 	elif enemy_dead:
 		_end(true)
@@ -631,9 +694,9 @@ func _check_rules():
 func _objective_text():
 	if mission == null:
 		return ""
-	var goal = mission.get("spice_goal", 0)
+	var goal = mission.get("uralium_goal", 0)
 	var lines = []
-	lines.append("[%s] Harvest %d spice (%d)" % ["x" if harvested[player_team] >= goal else " ", goal, int(harvested[player_team])])
+	lines.append("[%s] Harvest %d Uralium (%d)" % ["x" if harvested[player_team] >= goal else " ", goal, int(harvested[player_team])])
 	lines.append("[%s] Destroy the Klingos outpost" % ["x" if team_buildings(enemy_team).empty() else " "])
 	return PoolStringArray(lines).join("\n")
 
@@ -703,6 +766,10 @@ func _unhandled_input(event):
 			_zoom_by(1.1)
 		elif event.button_index == BUTTON_LEFT:
 			if event.pressed:
+				if targeting == "orbital":
+					fire_orbital(player_team, wp)
+					targeting = ""
+					return
 				if placing != "":
 					if place_structure(player_team, placement_cell(wp)):
 						placing = ""
@@ -715,8 +782,9 @@ func _unhandled_input(event):
 				_finish_selection(wp, event.shift)
 				drag_start = null
 		elif event.button_index == BUTTON_RIGHT and event.pressed:
-			if placing != "":
+			if placing != "" or targeting != "":
 				placing = ""
+				targeting = ""
 				return
 			_command(wp, event.control or event.alt)
 	elif event is InputEventMouseMotion and drag_start != null:
@@ -730,8 +798,9 @@ func _unhandled_input(event):
 	elif event is InputEventKey and event.pressed and not event.echo:
 		var key = event.scancode
 		if key == KEY_ESCAPE:
-			if placing != "":
+			if placing != "" or targeting != "":
 				placing = ""
+				targeting = ""
 			else:
 				_set_selection([])
 		elif key == KEY_X:
