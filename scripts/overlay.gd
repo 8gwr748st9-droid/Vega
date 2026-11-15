@@ -26,9 +26,9 @@ func _draw():
 				draw_rect(r2, Color(0, 0, 0, 0.6), false, 2.0)
 	if game.targeting == "orbital":
 		var m = get_global_mouse_position()
-		var t = OS.get_ticks_msec() / 1000.0
+		var now = OS.get_ticks_msec() / 1000.0
 		draw_arc(m, 130, 0, TAU, 32, Color(0.55, 0.9, 1.0, 0.9), 3.0)
-		draw_arc(m, 300, 0, TAU, 48, Color(0.55, 0.9, 1.0, 0.3 + 0.2 * sin(t * 6)), 2.0)
+		draw_arc(m, 300, 0, TAU, 48, Color(0.55, 0.9, 1.0, 0.3 + 0.2 * sin(now * 6)), 2.0)
 		draw_line(m - Vector2(20, 0), m + Vector2(20, 0), Color(0.55, 0.9, 1.0), 2.0)
 		draw_line(m - Vector2(0, 20), m + Vector2(0, 20), Color(0.55, 0.9, 1.0), 2.0)
 	if game.order_marker != null:
